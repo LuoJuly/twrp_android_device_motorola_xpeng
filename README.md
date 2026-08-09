@@ -1,4 +1,4 @@
-# Android device tree for motorola XT2175-2 (xpeng)
+# TWRP Android device tree for motorola XT2175-2 (xpeng)
 
 ```
 #
