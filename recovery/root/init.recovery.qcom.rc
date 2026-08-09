@@ -24,10 +24,14 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+# - panel backlight on init
+# - touch modules via async: on boot -> start runatboot (-> runatboot.sh)
+# - set_permissive / overrideprops services
+#
 
 on init
-    # Load touch modules early (device-tree auto-include)
-    exec u:r:recovery:s0 -- /system/bin/runatboot
+    start overrideprops
+    write /sys/class/backlight/panel0-backlight/brightness 200
     mkdir /config
     mount configfs none /config
     mkdir /config/usb_gadget/g1 0770 shell shell
@@ -81,11 +85,27 @@ on fs
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
 
 on boot
-    # touch already started on init via exec runatboot
+    start set_permissive
+    # Async touch module load (does not block USB / TWRP UI)
+    start runatboot
 
 service runatboot /system/bin/runatboot.sh
     oneshot
     user root
     group root
     disabled
+    seclabel u:r:recovery:s0
+
+service overrideprops /system/bin/overrideprops.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
+
+service set_permissive /system/bin/set_permissive.sh
+    user root
+    group root
+    disabled
+    oneshot
     seclabel u:r:recovery:s0
