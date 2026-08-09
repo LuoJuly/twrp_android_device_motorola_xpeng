@@ -26,6 +26,8 @@
 #
 
 on init
+    # Load touch modules early (device-tree auto-include)
+    exec u:r:recovery:s0 -- /system/bin/runatboot
     mkdir /config
     mount configfs none /config
     mkdir /config/usb_gadget/g1 0770 shell shell
@@ -77,3 +79,13 @@ on property:sys.usb.config=fastboot && property:sys.usb.ffs.ready=1 && property:
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+
+on boot
+    # touch already started on init via exec runatboot
+
+service runatboot /system/bin/runatboot.sh
+    oneshot
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0

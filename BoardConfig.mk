@@ -98,3 +98,16 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
+
+# -----------------------------------------------------------------------------
+# Touch (Novatek + mmi) for recovery
+# Primary path: recovery/root/{vendor/lib/modules,vendor/firmware,system/bin}
+# + init.recovery.qcom.rc exec /system/bin/runatboot (insmod -f for vermagic skew)
+#
+# TW_LOAD_VENDOR_MODULES uses modprobe (no -f) and is NOT sufficient alone when
+# .ko vermagic != prebuilt/kernel release. Keep it commented unless modules are
+# rebuilt against this exact Image.
+#
+# TW_LOAD_VENDOR_MODULES := "mmi_annotate.ko mmi_relay.ko sensors_class.ko touchscreen_mmi.ko nova_0flash_mmi.ko"
+# TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
+# -----------------------------------------------------------------------------
