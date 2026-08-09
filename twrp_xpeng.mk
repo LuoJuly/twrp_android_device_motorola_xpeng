@@ -19,7 +19,7 @@ $(call inherit-product, device/motorola/xpeng/device.mk)
 
 # Inherit some common TWRP stuff.
 $(call inherit-product, vendor/twrp/config/common.mk)
-#$(call inherit-product, vendor/omni/config/gsm.mk)
+#$(call inherit-product, vendor/twrp/config/gsm.mk)
 
 PRODUCT_DEVICE := xpeng
 PRODUCT_NAME := twrp_xpeng
