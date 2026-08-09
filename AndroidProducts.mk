@@ -6,9 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_xpeng.mk
+    $(LOCAL_DIR)/twrp_xpeng.mk
 
 COMMON_LUNCH_CHOICES := \
-    omni_xpeng-user \
-    omni_xpeng-userdebug \
-    omni_xpeng-eng
+    twrp_xpeng-user \
+    twrp_xpeng-userdebug \
+    twrp_xpeng-eng
