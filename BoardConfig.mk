@@ -64,8 +64,9 @@ endif
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 100663296
 BOARD_HAS_LARGE_FILESYSTEM := true
+# Build-time types (on-device logical partitions probed as ext4)
 BOARD_SYSTEMIMAGE_PARTITION_TYPE := ext4
-BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 TARGET_COPY_OUT_VENDOR := vendor
 BOARD_SUPER_PARTITION_SIZE := 9126805504 # TODO: Fix hardcoded value
@@ -75,26 +76,50 @@ BOARD_MOTOROLA_DYNAMIC_PARTITIONS_SIZE := 9122611200 # TODO: Fix hardcoded value
 
 # Platform
 TARGET_BOARD_PLATFORM := lahaina
+QCOM_BOARD_PLATFORMS += lahaina
 
 # Recovery
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
-
-# Security patch level
-VENDOR_SECURITY_PATCH := 2021-08-01
+TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery.fstab
+RECOVERY_SDCARD_ON_DATA := true
 
 # Verified Boot
 BOARD_AVB_ENABLE := true
 BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 
-# Hack: prevent anti rollback
+# Encryption / FBE (stock A12: wrappedkey_v0 + metadata keydirectory)
+BOARD_USES_METADATA_PARTITION := true
+BOARD_USES_QCOM_FBE_DECRYPTION := true
+TW_INCLUDE_CRYPTO := true
+TW_INCLUDE_CRYPTO_FBE := true
+TW_INCLUDE_FBE_METADATA_DECRYPT := true
+TW_USE_FSCRYPT_POLICY := 2
+# Manifest has @4.1 but TWRP maps any "4*" → keymaster_ver=4.x, which starts
+# BOTH 4.0 and 4.1 HALs as "default" and races km_compat / keystore2.
+TW_FORCE_KEYMASTER_VER := true
+TW_INCLUDE_RESETPROP := true
+TW_EXCLUDE_APEX := true
+# Needed to see keystore2/km_compat abort reasons in recovery
+TWRP_INCLUDE_LOGCAT := true
+TARGET_USES_LOGD := true
+# Match qcom prepdecrypt defaults; real patch pulled from system/vendor when possible
+PLATFORM_VERSION := 99.87.36
+PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
 PLATFORM_SECURITY_PATCH := 2099-12-31
 VENDOR_SECURITY_PATCH := 2099-12-31
-PLATFORM_VERSION := 16.1.0
+
+# libs required by qseecomd / keymaster (missing libion caused splash hang)
+TARGET_RECOVERY_DEVICE_MODULES += libion
+RECOVERY_LIBRARY_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
 
 # TWRP Configuration
 # portrait_hdpi (1080x1920) scaled to 1080x2460 — best stock theme for this panel
+# Shown as: 3.7.1_12-<TW_DEVICE_VERSION>
+_empty :=
+_space := $(_empty) $(_empty)
+TW_DEVICE_VERSION := 0_by$(_space)LuoJuly
 TW_THEME := portrait_hdpi
 TW_EXTRA_LANGUAGES := true
 TW_SCREEN_BLANK_ON_BOOT := true
@@ -111,6 +136,7 @@ TW_USE_LEGACY_BATTERY_SERVICES := true
 TW_CUSTOM_BATTERY_PATH := /tmp/twrp_battery
 # Published by init_thermal.sh (zone0 often missing until ADSP/QMI is up).
 TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
+BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
 
 # -----------------------------------------------------------------------------
 # Touch (Novatek + mmi) for recovery

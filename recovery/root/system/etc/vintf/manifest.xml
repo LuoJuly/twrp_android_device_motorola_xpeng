@@ -1,0 +1,6 @@
+<!-- Minimal framework VINTF skeleton for recovery.
+     libvintf only loads /system/etc/vintf/manifest/*.xml fragments when this
+     base file exists. Without it, servicemanager rejects keystore2 registration
+     ("Could not find ... in the VINTF manifest") and keystore2 panics. -->
+<manifest version="1.0" type="framework">
+</manifest>

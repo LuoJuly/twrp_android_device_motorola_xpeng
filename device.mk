@@ -6,6 +6,9 @@
 #
 
 LOCAL_PATH := device/motorola/xpeng
+
+PRODUCT_USE_DYNAMIC_PARTITIONS := true
+
 # A/B
 AB_OTA_POSTINSTALL_CONFIG += \
     RUN_POSTINSTALL_system=true \
@@ -13,23 +16,20 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_system=ext4 \
     POSTINSTALL_OPTIONAL_system=true
 
-# Boot control HAL
+# Boot control HAL — recovery must ship the passthrough impl.
+# Decrypt_Data → MetadataCrypt → cp_needsCheckpoint() → IBootControl::getService()
+# waits forever if boot-hal cannot load android.hardware.boot@1.0-impl-1.2.so
+# (symptoms: stuck on TWRP splash, logspam "Waited one second for IBootControl").
 PRODUCT_PACKAGES += \
-    android.hardware.boot@1.0-impl \
-    android.hardware.boot@1.0-service
+    android.hardware.boot@1.2-impl \
+    android.hardware.boot@1.2-impl.recovery \
+    android.hardware.boot@1.2-service
 
 PRODUCT_PACKAGES += \
-    bootctrl.lahaina
+    update_engine_sideload \
+    update_verifier
 
-PRODUCT_PACKAGES := \
-    bootctrl.lahaina \
-    libgptutils \
-    libz \
-    libcutils
-
+# QCOM FBE decryption (device/qcom/twrp-common)
 PRODUCT_PACKAGES += \
-    otapreopt_script \
-    cppreopts.sh \
-    update_engine \
-    update_verifier \
-    update_engine_sideload
+    qcom_decrypt \
+    qcom_decrypt_fbe

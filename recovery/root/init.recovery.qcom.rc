@@ -8,6 +8,8 @@
 # TWRP difference vs Lineage: Lineage has ro.debuggable=0 and enables ADB from
 # the recovery UI; we run enable_adb (none→adb) after boot for default ADB.
 #
+# FBE decrypt: qcom twrp-common prepdecrypt + keymaster 4.1 / gatekeeper / qseecomd
+import /init.recovery.qcom_decrypt.rc
 
 on init
     start overrideprops
@@ -23,6 +25,9 @@ on init
     write /tmp/twrp_battery/status Discharging
     # LineageOS: enable configfs USB; leave gadget creation to init.rc on fs
     setprop sys.usb.configfs 1
+    # Decrypt bring-up logging + force patchlevel sync from system/vendor
+    setprop prepdecrypt.loglevel 2
+    setprop prepdecrypt.setpatch true
 
 # LineageOS: controller + force peripheral mode
 on property:ro.boot.usbcontroller=*
@@ -32,6 +37,12 @@ on property:ro.boot.usbcontroller=*
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+    # qseecomd runs as system — allow RPMB/ION (metadata FBE key unwrap)
+    wait /dev/0:0:0:49476 1
+    chmod 0660 /dev/0:0:0:49476 /dev/0:0:0:49456 /dev/0:0:0:49488 /dev/qseecom /dev/ion
+    chown system system /dev/0:0:0:49476 /dev/0:0:0:49456 /dev/0:0:0:49488 /dev/qseecom /dev/ion
+    # Bring up TEE/keymaster before recovery Decrypt_Data (needs libion in ramdisk)
+    start ensure_decrypt
 
     # LineageOS: ADSP/PMIC firmware lives on modem, not vendor
     mkdir /firmware
@@ -49,6 +60,7 @@ on boot
     start runatboot
     # Default ADB (Lineage leaves this off until UI; TWRP wants it on)
     start enable_adb
+    start ensure_decrypt
 
 # Re-assert ADB after touch bring-up
 on property:init.svc.runatboot=stopped
@@ -87,4 +99,11 @@ service set_permissive /system/bin/set_permissive.sh
     group root
     disabled
     oneshot
+    seclabel u:r:recovery:s0
+
+service ensure_decrypt /system/bin/ensure_decrypt.sh
+    oneshot
+    user root
+    group root
+    disabled
     seclabel u:r:recovery:s0
