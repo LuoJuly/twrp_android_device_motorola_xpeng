@@ -32,10 +32,15 @@
 on init
     start overrideprops
     write /sys/class/backlight/panel0-backlight/brightness 200
-    # Seed CPU temp file before recovery GUI decides tw_no_cpu_temp
+    # Seed temp/battery files before recovery GUI evaluates header widgets.
+    # Battery must be 1..100: legacy monitor uses "-1%" when unread, and the
+    # theme hides tw_battery unless 0 < pct < 101.
     mkdir /tmp 0777
     write /tmp/twrp_cpu_temp 0
-    start init_thermal
+    mkdir /tmp/twrp_battery 0755
+    # Temporary seed only (1%); init_thermal replaces with FG SOC after ADSP
+    write /tmp/twrp_battery/capacity 1
+    write /tmp/twrp_battery/status Discharging
     mkdir /config
     mount configfs none /config
     mkdir /config/usb_gadget/g1 0770 shell shell
@@ -88,8 +93,18 @@ on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
 
+    # LineageOS: ADSP/PMIC firmware lives on modem, not vendor
+    mkdir /firmware
+    mount ext4 /dev/block/bootdevice/by-name/modem${ro.boot.slot_suffix} /firmware ro
+
+# Firmware mounted → load ADSP modules + boot ADSP + publish battery/temp
+on property:dev.mnt.blk.firmware=*
+    start init_thermal
+
 on boot
     start set_permissive
+    # Fallback if firmware mount property did not fire
+    start init_thermal
     # Async touch module load (does not block USB / TWRP UI)
     start runatboot
 

@@ -101,11 +101,12 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
-# Read capacity from sysfs (built-in qti_battery_charger -> battery).
-# Without this, health HAL failure defaults the UI to a fake 100%.
+# Legacy sysfs battery (health HAL failure previously faked 100%).
+# Capacity/status published by init_thermal.sh — direct battery/capacity is
+# often unreadable early, which makes tw_battery="-1%" and hides the widget.
 TW_USE_LEGACY_BATTERY_SERVICES := true
-# Published by recovery/root/system/bin/init_thermal.sh (zone0 is often
-# missing/unreadable until ADSP/QMI sensors come up on lahaina).
+TW_CUSTOM_BATTERY_PATH := /tmp/twrp_battery
+# Published by init_thermal.sh (zone0 often missing until ADSP/QMI is up).
 TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
 
 # -----------------------------------------------------------------------------
