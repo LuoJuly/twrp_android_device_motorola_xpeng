@@ -29,10 +29,11 @@ on init
     setprop prepdecrypt.loglevel 2
     setprop prepdecrypt.setpatch true
 
-# LineageOS: controller + force peripheral mode
+# Dual-role (otg): peripheral for ADB when PC-attached, host when OTG adapter
+# is used. Forced "peripheral" (Lineage default) blocks USB host / U-disk mount.
 on property:ro.boot.usbcontroller=*
     setprop sys.usb.controller ${ro.boot.usbcontroller}
-    write /sys/class/udc/${ro.boot.usbcontroller}/device/../mode peripheral
+    write /sys/class/udc/${ro.boot.usbcontroller}/device/../mode otg
 
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}

@@ -48,9 +48,9 @@ if [ ! -d /dev/usb-ffs/adb ] || [ ! -d /config/usb_gadget/g1/functions/ffs.adb ]
 	exit 1
 fi
 
-# Force peripheral (Lineage does this when usbcontroller is set)
+# Dual-role so OTG host still works after ADB bring-up (not forced peripheral)
 if [ -e "/sys/class/udc/$ctrl/device/../mode" ]; then
-	echo peripheral > "/sys/class/udc/$ctrl/device/../mode" 2>/dev/null || true
+	echo otg > "/sys/class/udc/$ctrl/device/../mode" 2>/dev/null || true
 fi
 
 setprop sys.usb.config none

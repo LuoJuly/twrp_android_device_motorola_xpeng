@@ -1,9 +1,11 @@
 # mount point       fstype    device                                                                flags
 # Probed on-device (TWRP): logical volumes are ext4 (not erofs).
-/system         ext4     system                                     flags=display="System";backup=1;logical;slotselect
-/system_ext     ext4     system_ext                                 flags=display="System_ext";backup=1;logical;slotselect
-/product        ext4     product                                    flags=display="Product";backup=1;logical;slotselect
-/vendor         ext4     vendor                                     flags=display="Vendor";backup=1;logical;slotselect
+# RO required: stock images use EXT4_FEATURE_RO_COMPAT_SHARED_BLOCKS (0x4000);
+# kernel rejects RDWR with Invalid argument / "unsupported optional features".
+/system         ext4     system                                     flags=display="System";backup=1;logical;slotselect;fsflags=ro
+/system_ext     ext4     system_ext                                 flags=display="System_ext";backup=1;logical;slotselect;fsflags=ro
+/product        ext4     product                                    flags=display="Product";backup=1;logical;slotselect;fsflags=ro
+/vendor         ext4     vendor                                     flags=display="Vendor";backup=1;logical;slotselect;fsflags=ro
 /metadata       ext4     /dev/block/bootdevice/by-name/metadata     flags=display="Metadata";fsflags="fileencryption=off"
 /data           f2fs     /dev/block/bootdevice/by-name/userdata     flags=fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0:metadata_encryption=aes-256-xts:wrappedkey_v0,keydirectory=/metadata/vold/metadata_encryption;display="Data"
 /persist        ext4     /dev/block/bootdevice/by-name/persist      flags=display="Persist";backup=1
@@ -11,9 +13,12 @@
 /firmware       ext4     /dev/block/bootdevice/by-name/modem        flags=display="Firmware";slotselect;backup=1
 /dsp            ext4     /dev/block/bootdevice/by-name/dsp          flags=display="DSP";slotselect
 /bt_firmware    ext4     /dev/block/bootdevice/by-name/bluetooth    flags=display="BT Firmware";slotselect
-# sdcard / usb — voldmanaged paths from fstab_vendor_boot.qcom
-/sdcard1        vfat     /devices/platform/soc/8804000.sdhci/mmc_host*  flags=display="MicroSD";storage;wipeingui;removable
-/sdcard1        vfat     /devices/platform/soc/1da4000.ufshc_card/host* flags=display="MicroSD";storage;wipeingui;removable
-/usb_otg        vfat     /devices/platform/soc/*.ssusb/*.dwc3/xhci-hcd.*.auto*  flags=display="USB-OTG";storage;wipeingui;removable
+# Removable storage — Android v2 lines MUST start with /devices/ so TWRP sets
+# Sysfs_Entry and matches block uevents (v1 /mount /devices/... never hotplugs).
+# Use exact a600000.ssusb path: prefix matching before the first '*' would otherwise
+# match all of /devices/platform/soc/ (including UFS). FS=auto → FAT32 + exFAT.
+/devices/platform/soc/8804000.sdhci/mmc_host*                      /external_sd  auto  defaults  display="MicroSD",storage,wipeingui,removable
+/devices/platform/soc/1da4000.ufshc_card/host*                      /external_sd  auto  defaults  display="MicroSD",storage,wipeingui,removable
+/devices/platform/soc/a600000.ssusb/a600000.dwc3/xhci-hcd.*.auto*   /usb-otg      auto  defaults  display="USB-OTG",storage,wipeingui,removable
 /boot           emmc     /dev/block/bootdevice/by-name/boot         flags=display="Boot";backup=1;flashimg=1
 /misc           emmc     /dev/block/bootdevice/by-name/misc         flags=display="Misc";backup=1;flashimg=1
