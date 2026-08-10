@@ -59,13 +59,11 @@ on boot
     start init_thermal
     # Async touch module load (does not block USB / TWRP UI)
     start runatboot
-    # Default ADB (Lineage leaves this off until UI; TWRP wants it on)
+    # Default ADB once only. A second none→adb after runatboot soft-disconnects
+    # the already-enumerated gadget; this dwc3 often will not re-enum until
+    # the cable is replugged (host loses adb for ~minute until replug).
     start enable_adb
     start ensure_decrypt
-
-# Re-assert ADB after touch bring-up
-on property:init.svc.runatboot=stopped
-    start enable_adb
 
 service init_thermal /system/bin/init_thermal.sh
     user root

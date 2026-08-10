@@ -6,8 +6,58 @@ diff --git a/data.cpp b/data.cpp
  #ifdef TW_HAS_MTP
  	mConst.SetValue("tw_has_mtp", "1");
 -	mPersist.SetValue("tw_mtp_enabled", "1");
-+	// Default off: auto-MTP on configfs can leave UDC unbound if ffs.mtp fails.
++	// Default off + not auto-started in twrp.cpp (host ADB breaks on mtp,adb rebind).
 +	mPersist.SetValue("tw_mtp_enabled", "0");
  	mPersist.SetValue("tw_mtp_debug", "0");
  #else
  	LOGINFO("TW_EXCLUDE_MTP := true\n");
+@@ -1137,6 +1138,11 @@
+ 
+ 	LOGINFO("Attempt to load settings from settings file...\n");
+ 	LoadValues(settings_file);
++#ifdef TW_HAS_MTP
++	// Never honor persisted auto-MTP across boots / settings reloads.
++	mPersist.SetValue("tw_mtp_enabled", "0");
++#endif
+ 	Output_Version();
+ #endif // ifdef TW_OEM_BUILD
+ 	PartitionManager.Mount_All_Storage();
+diff --git a/twrp.cpp b/twrp.cpp
+--- a/twrp.cpp
++++ b/twrp.cpp
+@@ -251,23 +251,24 @@
+ #ifdef TW_HAS_MTP
+ 	char mtp_crash_check[PROPERTY_VALUE_MAX];
+ 	property_get("mtp.crash_check", mtp_crash_check, "0");
+-	if (DataManager::GetIntValue("tw_mtp_enabled")
+-			&& !strcmp(mtp_crash_check, "0") && !crash_counter
+-			&& (!DataManager::GetIntValue(TW_IS_ENCRYPTED) || DataManager::GetIntValue(TW_IS_DECRYPTED))) {
+-		property_set("mtp.crash_check", "1");
+-		LOGINFO("Starting MTP\n");
+-		if (!PartitionManager.Enable_MTP())
+-			PartitionManager.Disable_MTP();
+-		else
+-			gui_msg("mtp_enabled=MTP Enabled");
+-		property_set("mtp.crash_check", "0");
+-	} else if (strcmp(mtp_crash_check, "0")) {
++	// Never auto-start MTP. Clear persisted flag; only tear down USB if MTP
++	// composition is actually active (avoid extra gadget toggles).
++	if (strcmp(mtp_crash_check, "0")) {
+ 		gui_warn("mtp_crash=MTP Crashed, not starting MTP on boot.");
+-		DataManager::SetValue("tw_mtp_enabled", 0);
+-		PartitionManager.Disable_MTP();
+ 	} else if (crash_counter == 1) {
+ 		LOGINFO("TWRP crashed; disabling MTP as a precaution.\n");
+-		PartitionManager.Disable_MTP();
++	} else if (DataManager::GetIntValue("tw_mtp_enabled")) {
++		LOGINFO("Clearing persisted MTP enabled flag (enable from Mount menu).\n");
+ 	}
++	DataManager::SetValue("tw_mtp_enabled", 0);
++	{
++		char usb_cfg[PROPERTY_VALUE_MAX];
++		property_get("sys.usb.config", usb_cfg, "");
++		if (strstr(usb_cfg, "mtp") != nullptr)
++			PartitionManager.Disable_MTP();
++	}
+ #endif
+ 
