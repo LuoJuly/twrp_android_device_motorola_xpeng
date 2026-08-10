@@ -141,6 +141,9 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
+# Enable password-encrypted TWRP backups (openaes). Must be non-empty and not
+# the string "true" — see bootable/recovery/Android.mk + openaes/Android.mk.
+TW_EXCLUDE_ENCRYPTED_BACKUPS := false
 # lahaina RTC ticks from 1970; real time = rtc + /data/vendor/time/ats_*
 TARGET_RECOVERY_QCOM_RTC_FIX := true
 # POSIX UTC+8 (Beijing, no DST). Wired through recovery Android.mk → data.cpp.
