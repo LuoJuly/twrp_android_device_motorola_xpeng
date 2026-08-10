@@ -1,0 +1,20 @@
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+index 2766b4c..b64f81a 100755
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -3155,6 +3155,15 @@ void TWPartitionManager::Translate_Partition_Display_Names() {
+ 	std::vector<TWPartition*>::iterator sysfs;
+ 	for (sysfs = Partitions.begin(); sysfs != Partitions.end(); sysfs++) {
+ 		if (!(*sysfs)->Sysfs_Entry.empty()) {
++			/* Only rename generic auto-* sysfs mounts. Keep fstab display=
++			 * / prior Translate_Partition names (e.g. Micro SDCard, USB OTG)
++			 * so Mount UI does not show duplicate "Storage" entries. */
++			string base = (*sysfs)->Mount_Point;
++			if (!base.empty() && base[0] == '/')
++				base = base.substr(1);
++			if ((*sysfs)->Display_Name != base &&
++					(*sysfs)->Display_Name != "Storage")
++				continue;
+ 			Translate_Partition((*sysfs)->Mount_Point.c_str(), "autostorage", "Storage", "autostorage", "Storage");
+ 		}
+ 	}
