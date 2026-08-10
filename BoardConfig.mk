@@ -101,6 +101,9 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
+# configfs recovery has no mtp,adb gadget bind. TWRP's default MTP bring-up
+# does none -> mtp,adb and tears down working ADB (sideload still works).
+TW_EXCLUDE_MTP := true
 # Legacy sysfs battery (health HAL failure previously faked 100%).
 # Capacity/status published by init_thermal.sh — direct battery/capacity is
 # often unreadable early, which makes tw_battery="-1%" and hides the widget.
@@ -121,3 +124,5 @@ TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
 # TW_LOAD_VENDOR_MODULES := "mmi_annotate.ko mmi_relay.ko sensors_class.ko touchscreen_mmi.ko nova_0flash_mmi.ko"
 # TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
 # -----------------------------------------------------------------------------
+
+TARGET_SYSTEM_PROP += $(DEVICE_PATH)/system.prop

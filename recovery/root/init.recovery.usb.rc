@@ -1,0 +1,5 @@
+# Override TWRP's legacy android_usb init.recovery.usb.rc.
+# xpeng / lahaina uses configfs (sys.usb.configfs=1); writing
+# /sys/class/android_usb/android0/* fails and aborts those actions.
+# Gadget bind/unbind is handled by stock recovery init.rc configfs rules
+# (same as LineageOS init.qcom.recovery.rc + hw/init.rc).

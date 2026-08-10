@@ -1,0 +1,76 @@
+#!/system/bin/sh
+# Enable default ADB using the same USB sequence as Lineage recovery UI /
+# TWRP GUIAction::enableadb: sys.usb.config none -> adb
+# Requires configfs gadget from stock init.rc (fs && sys.usb.configfs=1).
+
+log() {
+	echo "enable_adb: $*" > /dev/kmsg 2>/dev/null || true
+}
+
+# Wait for Lineage-style stock gadget + functionfs (created on fs)
+i=0
+while [ "$i" -lt 50 ]; do
+	ctrl="$(getprop sys.usb.controller)"
+	if [ -z "$ctrl" ]; then
+		ctrl="$(getprop ro.boot.usbcontroller)"
+		[ -n "$ctrl" ] && setprop sys.usb.controller "$ctrl"
+	fi
+	if [ -z "$ctrl" ] || [ ! -d "/sys/class/udc/$ctrl" ]; then
+		for d in /sys/class/udc/*; do
+			[ -e "$d" ] || continue
+			ctrl="$(basename "$d")"
+			setprop sys.usb.controller "$ctrl"
+			break
+		done
+	fi
+	if [ -n "$ctrl" ] && [ -d "/sys/class/udc/$ctrl" ] \
+		&& [ -d /dev/usb-ffs/adb ] \
+		&& [ -d /config/usb_gadget/g1/functions/ffs.adb ]; then
+		break
+	fi
+	i=$((i + 1))
+	sleep 0.2
+done
+
+ctrl="$(getprop sys.usb.controller)"
+log "configfs=$(getprop sys.usb.configfs) ctrl=$ctrl ffs_adb=$([ -d /dev/usb-ffs/adb ] && echo y || echo n) g1=$([ -d /config/usb_gadget/g1/functions/ffs.adb ] && echo y || echo n)"
+
+if [ "$(getprop sys.usb.configfs)" != "1" ]; then
+	setprop sys.usb.configfs 1
+fi
+
+if [ -z "$ctrl" ] || [ ! -d "/sys/class/udc/$ctrl" ]; then
+	log "no UDC; abort"
+	exit 1
+fi
+if [ ! -d /dev/usb-ffs/adb ] || [ ! -d /config/usb_gadget/g1/functions/ffs.adb ]; then
+	log "gadget/ffs not ready; abort"
+	exit 1
+fi
+
+# Force peripheral (Lineage does this when usbcontroller is set)
+if [ -e "/sys/class/udc/$ctrl/device/../mode" ]; then
+	echo peripheral > "/sys/class/udc/$ctrl/device/../mode" 2>/dev/null || true
+fi
+
+setprop sys.usb.config none
+sleep 0.5
+setprop sys.usb.config adb
+
+i=0
+while [ "$i" -lt 30 ]; do
+	if [ "$(getprop sys.usb.state)" = "adb" ]; then
+		log "ok state=adb svc=$(getprop init.svc.adbd) ffs=$(getprop sys.usb.ffs.ready)"
+		exit 0
+	fi
+	i=$((i + 1))
+	sleep 0.2
+done
+
+log "retry toggle (state=$(getprop sys.usb.state) ffs=$(getprop sys.usb.ffs.ready) svc=$(getprop init.svc.adbd))"
+setprop sys.usb.config none
+sleep 0.5
+setprop sys.usb.config adb
+sleep 1
+log "done state=$(getprop sys.usb.state) ffs=$(getprop sys.usb.ffs.ready) svc=$(getprop init.svc.adbd) udc=$(cat /config/usb_gadget/g1/UDC 2>/dev/null)"
+exit 0

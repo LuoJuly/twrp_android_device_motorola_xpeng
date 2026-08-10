@@ -38,7 +38,7 @@ load mmi_relay.ko
 load qpnp_adaptive_charge.ko
 
 # --- other mmi / sensors ---
-load moto_f_usbnet.ko
+# Do not load moto_f_usbnet.ko here — it can claim USB and break adbd.
 load sx937x_sar.ko
 load fpc1020_mmi.ko
 load mmi_sys_temp.ko
@@ -51,7 +51,8 @@ load msm_drm.ko
 load touchscreen_mmi.ko
 load nova_0flash_mmi.ko
 
-setprop sys.usb.config true
+# Never set sys.usb.config to anything other than adb/fastboot/none.
+# (Previously "true" overwrote adb and left ADB dead after touch init.)
 
 cd "$firmware_path" || exit 0
 touch_product_string=$(ls "$touch_class_path" 2>/dev/null)
