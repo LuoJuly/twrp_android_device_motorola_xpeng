@@ -126,8 +126,12 @@ TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
-# configfs recovery has no mtp,adb gadget bind. TWRP's default MTP bring-up
-# does none -> mtp,adb and tears down working ADB (sideload still works).
+# lahaina RTC ticks from 1970; real time = rtc + /data/vendor/time/ats_*
+TARGET_RECOVERY_QCOM_RTC_FIX := true
+# POSIX UTC+8 (Beijing, no DST). Wired through recovery Android.mk → data.cpp.
+TW_DEFAULT_TIMEZONE := CST-8
+# Keep MTP off (breaks ADB on this configfs gadget). USB mass storage (UMS)
+# is enabled separately via mass_storage.0 lun in init.recovery.usb.rc.
 TW_EXCLUDE_MTP := true
 # Legacy sysfs battery (health HAL failure previously faked 100%).
 # Capacity/status published by init_thermal.sh — direct battery/capacity is

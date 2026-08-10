@@ -3,3 +3,34 @@
 # /sys/class/android_usb/android0/* fails and aborts those actions.
 # Gadget bind/unbind is handled by stock recovery init.rc configfs rules
 # (same as LineageOS init.qcom.recovery.rc + hw/init.rc).
+#
+# Extra: create mass_storage.0 so TWRP enables USB Storage (UMS) mode.
+# CUSTOM_LUN_FILE = /config/usb_gadget/g1/functions/mass_storage.0/lun.%d/file
+
+# After stock init.rc creates g1 + ffs.* on (fs && configfs=1), add UMS lun.
+# Also retry on boot in case import order raced the mkdir before g1 existed.
+on fs && property:sys.usb.configfs=1
+    mkdir /config/usb_gadget/g1/functions/mass_storage.0 0770 root root
+
+on boot
+    mkdir /config/usb_gadget/g1/functions/mass_storage.0 0770 root root
+
+# UMS + ADB (TWRP Mount → USB Storage sets sys.usb.config=mass_storage,adb)
+on property:sys.usb.config=mass_storage,adb && property:sys.usb.ffs.ready=1 && property:sys.usb.configfs=1
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g1/idProduct 0xD001
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "ums,adb"
+    rm /config/usb_gadget/g1/configs/b.1/f1
+    rm /config/usb_gadget/g1/configs/b.1/f2
+    symlink /config/usb_gadget/g1/functions/mass_storage.0 /config/usb_gadget/g1/configs/b.1/f1
+    symlink /config/usb_gadget/g1/functions/ffs.adb /config/usb_gadget/g1/configs/b.1/f2
+    write /config/usb_gadget/g1/UDC ${sys.usb.controller}
+    start adbd
+    setprop sys.usb.state ${sys.usb.config}
+
+# When returning to adb-only, drop the UMS function link (f2)
+on property:sys.usb.config=adb && property:sys.usb.ffs.ready=1 && property:sys.usb.configfs=1
+    rm /config/usb_gadget/g1/configs/b.1/f2
+
+on property:sys.usb.config=none && property:sys.usb.configfs=1
+    rm /config/usb_gadget/g1/configs/b.1/f2
