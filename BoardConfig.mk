@@ -42,7 +42,9 @@ DEXPREOPT_GENERATE_APEX_IMAGE := true
 TARGET_BOOTLOADER_BOARD_NAME := xpeng
 TARGET_NO_BOOTLOADER := true
 
-# Display
+# Display (panel 1080x2460; density left unchanged)
+TARGET_SCREEN_WIDTH := 1080
+TARGET_SCREEN_HEIGHT := 2460
 TARGET_SCREEN_DENSITY := 400
 
 # Kernel
@@ -92,12 +94,19 @@ VENDOR_SECURITY_PATCH := 2099-12-31
 PLATFORM_VERSION := 16.1.0
 
 # TWRP Configuration
+# portrait_hdpi (1080x1920) scaled to 1080x2460 — best stock theme for this panel
 TW_THEME := portrait_hdpi
 TW_EXTRA_LANGUAGES := true
 TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
 TW_INCLUDE_REPACKTOOLS := true
+# Read capacity from sysfs (built-in qti_battery_charger -> battery).
+# Without this, health HAL failure defaults the UI to a fake 100%.
+TW_USE_LEGACY_BATTERY_SERVICES := true
+# Published by recovery/root/system/bin/init_thermal.sh (zone0 is often
+# missing/unreadable until ADSP/QMI sensors come up on lahaina).
+TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
 
 # -----------------------------------------------------------------------------
 # Touch (Novatek + mmi) for recovery

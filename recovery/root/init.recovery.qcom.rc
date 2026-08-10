@@ -32,6 +32,10 @@
 on init
     start overrideprops
     write /sys/class/backlight/panel0-backlight/brightness 200
+    # Seed CPU temp file before recovery GUI decides tw_no_cpu_temp
+    mkdir /tmp 0777
+    write /tmp/twrp_cpu_temp 0
+    start init_thermal
     mkdir /config
     mount configfs none /config
     mkdir /config/usb_gadget/g1 0770 shell shell
@@ -88,6 +92,13 @@ on boot
     start set_permissive
     # Async touch module load (does not block USB / TWRP UI)
     start runatboot
+
+service init_thermal /system/bin/init_thermal.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
 
 service runatboot /system/bin/runatboot.sh
     oneshot
