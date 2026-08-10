@@ -114,6 +114,21 @@ VENDOR_SECURITY_PATCH := 2099-12-31
 TARGET_RECOVERY_DEVICE_MODULES += libion
 RECOVERY_LIBRARY_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
 
+# QTI AIDL vibrator (qcom-hv-haptics input FF) — ship HAL into recovery ramdisk
+# Requires VINTF fragment (recovery/root/vendor/etc/vintf/manifest/...xml) or
+# AServiceManager_addService aborts and init crash-loops (UI lag).
+TW_SUPPORT_INPUT_AIDL_HAPTICS := true
+TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
+TARGET_RECOVERY_DEVICE_MODULES += \
+    vendor.qti.hardware.vibrator.service \
+    vendor.qti.hardware.vibrator.impl \
+    libqtivibratoreffect
+RECOVERY_BINARY_SOURCE_FILES += \
+    $(TARGET_OUT_VENDOR_EXECUTABLES)/hw/vendor.qti.hardware.vibrator.service
+RECOVERY_LIBRARY_SOURCE_FILES += \
+    $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/vendor.qti.hardware.vibrator.impl.so \
+    $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libqtivibratoreffect.so
+
 # TWRP Configuration
 # portrait_hdpi (1080x1920) scaled to 1080x2460 — best stock theme for this panel
 # Shown as: 3.7.1_12-<TW_DEVICE_VERSION>
@@ -130,9 +145,8 @@ TW_INCLUDE_REPACKTOOLS := true
 TARGET_RECOVERY_QCOM_RTC_FIX := true
 # POSIX UTC+8 (Beijing, no DST). Wired through recovery Android.mk → data.cpp.
 TW_DEFAULT_TIMEZONE := CST-8
-# Keep MTP off (breaks ADB on this configfs gadget). USB mass storage (UMS)
-# is enabled separately via mass_storage.0 lun in init.recovery.usb.rc.
-TW_EXCLUDE_MTP := true
+# MTP via configfs ffs.mtp (see init.recovery.usb.rc). UMS remains mass_storage.0.
+# Do NOT set TW_EXCLUDE_MTP.
 # Legacy sysfs battery (health HAL failure previously faked 100%).
 # Capacity/status published by init_thermal.sh — direct battery/capacity is
 # often unreadable early, which makes tw_battery="-1%" and hides the widget.

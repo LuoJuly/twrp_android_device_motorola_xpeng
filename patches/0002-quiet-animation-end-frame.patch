@@ -1,0 +1,45 @@
+diff --git a/gui/resources.cpp b/gui/resources.cpp
+index 744a853..f1a0649 100755
+--- a/gui/resources.cpp
++++ b/gui/resources.cpp
+@@ -73,7 +73,7 @@ int Resource::ExtractResource(ZipArchiveHandle pZip, std::string folderName, std
+ 	return 0;
+ }
+ 
+-void Resource::LoadImage(ZipArchiveHandle pZip, std::string file, gr_surface* surface)
++void Resource::LoadImage(ZipArchiveHandle pZip, std::string file, gr_surface* surface, bool quiet)
+ {
+ 	int rc = 0;
+ 	if (ExtractResource(pZip, "images", file, ".png", TMP_RESOURCE_NAME) == 0)
+@@ -92,7 +92,7 @@ void Resource::LoadImage(ZipArchiveHandle pZip, std::string file, gr_surface* su
+ 		// File name in xml may have included .png so try without adding .png
+ 		rc = res_create_surface(file.c_str(), surface);
+ 	}
+-	if (rc != 0)
++	if (rc != 0 && !quiet)
+ 		LOGINFO("Failed to load image from %s%s, error %d\n", file.c_str(), pZip ? " (zip)" : "", rc);
+ }
+ 
+@@ -265,7 +265,8 @@ AnimationResource::AnimationResource(xml_node<>* node, ZipArchiveHandle pZip)
+ 
+ 		gr_surface surface = nullptr;
+ 		gr_surface temp_surface = nullptr;
+-		LoadImage(pZip, fileName.str(), &temp_surface);
++		// Quiet: missing N+1 frame ends the sequence (e.g. indeterminate013).
++		LoadImage(pZip, fileName.str(), &temp_surface, true);
+ 		CheckAndScaleImage(temp_surface, &surface, retain_aspect);
+ 		if (surface) {
+ 			mSurfaces.push_back(surface);
+diff --git a/gui/resources.hpp b/gui/resources.hpp
+index 8c12276..31d3c54 100755
+--- a/gui/resources.hpp
++++ b/gui/resources.hpp
+@@ -47,7 +47,7 @@ private:
+ 
+ protected:
+ 	static int ExtractResource(ZipArchiveHandle pZip, std::string folderName, std::string fileName, std::string fileExtn, std::string destFile);
+-	static void LoadImage(ZipArchiveHandle pZip, std::string file, gr_surface* surface);
++	static void LoadImage(ZipArchiveHandle pZip, std::string file, gr_surface* surface, bool quiet = false);
+ 	static void CheckAndScaleImage(gr_surface source, gr_surface* destination, int retain_aspect);
+ };
+ 

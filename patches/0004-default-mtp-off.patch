@@ -1,0 +1,13 @@
+diff --git a/data.cpp b/data.cpp
+--- a/data.cpp
++++ b/data.cpp
+@@ -934,7 +934,8 @@
+ #endif
+ #ifdef TW_HAS_MTP
+ 	mConst.SetValue("tw_has_mtp", "1");
+-	mPersist.SetValue("tw_mtp_enabled", "1");
++	// Default off: auto-MTP on configfs can leave UDC unbound if ffs.mtp fails.
++	mPersist.SetValue("tw_mtp_enabled", "0");
+ 	mPersist.SetValue("tw_mtp_debug", "0");
+ #else
+ 	LOGINFO("TW_EXCLUDE_MTP := true\n");

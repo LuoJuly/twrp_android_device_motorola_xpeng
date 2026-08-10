@@ -33,3 +33,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     qcom_decrypt \
     qcom_decrypt_fbe
+
+# QTI AIDL vibrator HAL (copied into recovery via BoardConfig RECOVERY_*_SOURCE_FILES)
+PRODUCT_PACKAGES += \
+    vendor.qti.hardware.vibrator.service

@@ -108,3 +108,16 @@ service ensure_decrypt /system/bin/ensure_decrypt.sh
     group root
     disabled
     seclabel u:r:recovery:s0
+
+# Built into recovery as /system/bin/... (RECOVERY_BINARY_SOURCE_FILES strips vendor/hw).
+# Start only after servicemanager — AServiceManager_addService CHECK-aborts without VINTF.
+# oneshot: if it still aborts, do NOT crash-loop (that froze the TWRP UI).
+service vendor.qti.vibrator /system/bin/start_vibrator.sh
+    user root
+    group root input
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
+
+on property:init.svc.servicemanager=running
+    start vendor.qti.vibrator
