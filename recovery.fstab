@@ -1,10 +1,10 @@
 # mount point / device layout
 # Logical partitions (v2 fstab like bangkk-twrp): list ext4 + erofs so TWRP
 # Save_FS_Flags merges both; Check_FS_Type picks the real FS at mount.
-# Prefer ext4 first (current stock xpeng). erofs covers LOS / newer images.
-# fs_mgr "ro": stock ext4 uses SHARED_BLOCKS (0x4000) — RDWR → Invalid argument.
-# system_root lines mirror bangkk: same /system mount; TWRP remaps to /system_root
-# and Get_Bare_Partition_Name() still resolves the super volume as "system".
+# Prefer ext4 first (stock xpeng / main). erofs covers LOS / newer images.
+# system_root mirrors bangkk: same /system mount; TWRP remaps to /system_root.
+# fs_mgr "ro": stock ext4 SHARED_BLOCKS — RDWR → Invalid argument.
+# No odm lines: this ROM has no odm mapper (unable to update logical partition).
 system       /system       ext4    ro      wait,slotselect,logical,display="System",backup=1
 system       /system       erofs   ro      wait,slotselect,logical,display="System",backup=1
 system_root  /system       ext4    ro      wait,slotselect,logical,display="System",backup=1

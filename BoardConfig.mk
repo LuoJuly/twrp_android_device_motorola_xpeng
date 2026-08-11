@@ -16,8 +16,7 @@ AB_OTA_PARTITIONS += \
     system \
     product \
     system_ext \
-    vendor \
-    odm
+    vendor
 BOARD_USES_RECOVERY_AS_BOOT := true
 
 # Architecture
@@ -60,18 +59,39 @@ ifeq ($(TARGET_FORCE_PREBUILT_KERNEL),true)
 TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
 endif
 
+# Large recovery ramdisk panics this KernelSU Image in unpack_to_rootfs.
+# Prefer LZ4 + aggressive size cuts (target ~OEM unc ~25MB).
+BOARD_RAMDISK_USE_LZ4 := true
+TW_EXCLUDE_BASH := true
+TW_EXCLUDE_NANO := true
+TW_NO_EXFAT := true
+TW_NO_EXFAT_FUSE := true
+TW_INCLUDE_REPACKTOOLS := false
+TW_EXCLUDE_TZDATA := true
+# Drop logd/logcat from ramdisk (~1MB); use pstore /adb when needed.
+TWRP_INCLUDE_LOGCAT := false
+TARGET_USES_LOGD := false
+# Late slim immediately before mkbootfs (after all recovery installs).
+BOARD_RECOVERY_IMAGE_PREPARE := $(DEVICE_PATH)/recovery/slim-ramdisk.sh
+
 # Partitions
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 100663296
 BOARD_HAS_LARGE_FILESYSTEM := true
-# Build-time types (on-device logical partitions probed as ext4)
-BOARD_SYSTEMIMAGE_PARTITION_TYPE := ext4
+# Build-time types: match tundra (erofs). Runtime mount still uses dual fstab.
+BOARD_SYSTEMIMAGE_PARTITION_TYPE := erofs
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
-BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 TARGET_COPY_OUT_VENDOR := vendor
+TARGET_COPY_OUT_PRODUCT := product
+TARGET_COPY_OUT_SYSTEM_EXT := system_ext
 BOARD_SUPER_PARTITION_SIZE := 9126805504 # TODO: Fix hardcoded value
 BOARD_SUPER_PARTITION_GROUPS := motorola_dynamic_partitions
-BOARD_MOTOROLA_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext product vendor odm
+# No odm: this ROM has no odm mapper (matches recovery.fstab).
+BOARD_MOTOROLA_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext product vendor
 BOARD_MOTOROLA_DYNAMIC_PARTITIONS_SIZE := 9122611200 # TODO: Fix hardcoded value
 
 # Platform
@@ -101,9 +121,6 @@ TW_USE_FSCRYPT_POLICY := 2
 TW_FORCE_KEYMASTER_VER := true
 TW_INCLUDE_RESETPROP := true
 TW_EXCLUDE_APEX := true
-# Needed to see keystore2/km_compat abort reasons in recovery
-TWRP_INCLUDE_LOGCAT := true
-TARGET_USES_LOGD := true
 # Match qcom prepdecrypt defaults; real patch pulled from system/vendor when possible
 PLATFORM_VERSION := 99.87.36
 PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
@@ -115,8 +132,6 @@ TARGET_RECOVERY_DEVICE_MODULES += libion
 RECOVERY_LIBRARY_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
 
 # QTI AIDL vibrator (qcom-hv-haptics input FF) — ship HAL into recovery ramdisk
-# Requires VINTF fragment (recovery/root/vendor/etc/vintf/manifest/...xml) or
-# AServiceManager_addService aborts and init crash-loops (UI lag).
 TW_SUPPORT_INPUT_AIDL_HAPTICS := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
 TARGET_RECOVERY_DEVICE_MODULES += \
@@ -140,7 +155,6 @@ TW_EXTRA_LANGUAGES := true
 TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
-TW_INCLUDE_REPACKTOOLS := true
 # Enable password-encrypted TWRP backups (openaes). Must be non-empty and not
 # the string "true" — see bootable/recovery/Android.mk + openaes/Android.mk.
 TW_EXCLUDE_ENCRYPTED_BACKUPS := false

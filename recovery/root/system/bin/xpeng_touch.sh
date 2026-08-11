@@ -31,20 +31,14 @@ wait_for() {
 load exfat.ko
 
 # ADSP + battery are handled by init_thermal.sh (Lineage: modem→/firmware).
-# Still load remaining mmi modules for touch/sensors (idempotent if already up).
+# Minimal mmi stack for touch (audio/fp/sar modules removed to shrink ramdisk).
 load mmi_info.ko
 load mmi_annotate.ko
 load mmi_relay.ko
 load qpnp_adaptive_charge.ko
-
-# --- other mmi / sensors ---
-# Do not load moto_f_usbnet.ko here — it can claim USB and break adbd.
-load sx937x_sar.ko
-load fpc1020_mmi.ko
 load mmi_sys_temp.ko
 load sensors_class.ko
 load utags.ko
-load aw882xx_k504.ko
 
 # --- touch (needs msm_drm stub for panel notifier) ---
 load msm_drm.ko
