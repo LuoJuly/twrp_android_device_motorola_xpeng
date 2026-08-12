@@ -52,6 +52,7 @@ rm -f \
 # Keep update_engine_sideload — A/B Lineage signed zips require it to flash the
 # inactive slot (TWRP execs /system/bin/update_engine_sideload). update_verifier
 # is not needed for sideload and can stay deleted for ramdisk size.
+# Keep minadbd — TWRP ADB Sideload UI forks /system/bin/minadbd (not adbd).
 rm -f \
   "$ROOT"/system/bin/magiskboot \
   "$ROOT"/system/bin/logd \
@@ -62,8 +63,7 @@ rm -f \
   "$ROOT"/system/bin/ttyd \
   "$ROOT"/system/bin/microhttpd \
   "$ROOT"/system/bin/update_verifier \
-  "$ROOT"/system/bin/fastbootd \
-  "$ROOT"/system/bin/minadbd
+  "$ROOT"/system/bin/fastbootd
 
 # Wrap update_engine_sideload so forged 2099 SPL (Keymaster decrypt) does not
 # look like an OTA security-patch downgrade → BCB --wipe_data / powerwash.
