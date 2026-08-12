@@ -98,6 +98,7 @@
 		<string name="successful">Successful</string>
 		<string name="install_failed">Installation Failed</string>
 		<string name="install_successful">Installation Successful</string>
+		<string name="install_took_seconds_msg">Install took {1} second(s).</string>
 		<string name="wipe_cache_dalvik_btn">Wipe Cache/Dalvik</string>
 		<string name="wipe_dalvik_btn">Wipe Dalvik</string>
 		<string name="reboot_system_btn">Reboot System</string>
@@ -776,5 +777,21 @@
 		<string name="restore_with_pattern1">Pattern is enabled</string>
 		<string name="restore_with_pattern2">Pattern should be disabled before restore</string>
 		<string name="reboot_after_restore">It is recommended to reboot Android once after first boot.</string>
+		<!-- WLAN UI pages still preload when TW_NO_NETWORK hides the menu -->
+		<string name="wlan_btn">WLAN</string>
+		<string name="extension_btn">Extension</string>
+		<string name="wlan_password_hdr">Enter Password</string>
+		<string name="wlan_password_prompt">Enter password for network:</string>
+		<string name="wlan_encryption_hdr">Encryption:</string>
+		<string name="wlan_password_hint">Press back to cancel.</string>
+		<string name="wlan_log_hdr">This page is built by Jason</string>
+		<string name="wlan_get_status_btn">Get Status</string>
+		<string name="wlan_test_network_btn">Test Network</string>
+		<string name="wlan_scan_btn">Scan</string>
+		<string name="wlan_connect_btn">Connect</string>
+		<string name="wlan_stop_service_btn">Stop Service</string>
+		<string name="wlan_start_service_btn">Start Service</string>
+		<string name="select_wlan_hdr">Select WLAN to Connect</string>
+		<string name="next_btn">Next</string>
 	</resources>
 </language>

@@ -98,6 +98,7 @@
 		<string name="successful">成功</string>
 		<string name="install_failed">安装失败</string>
 		<string name="install_successful">安装成功</string>
+		<string name="install_took_seconds_msg">安装耗时 {1} 秒。</string>
 		<string name="wipe_cache_dalvik_btn">清除 Cache/Dalvik</string>
 		<string name="wipe_dalvik_btn">清除 Dalvik</string>
 		<string name="reboot_system_btn">重启系统</string>
@@ -770,5 +771,21 @@
 		<string name="restore_with_pattern1">ROM 中的 图案密码 已启用</string>
 		<string name="restore_with_pattern2">恢复前应该在 ROM 中禁用 图案密码</string>
 		<string name="reboot_after_restore">建议在 Android 首次启动后再重启一次。</string>
+		<!-- TW_NO_NETWORK 隐藏菜单后，WLAN 页面仍会预加载 -->
+		<string name="wlan_btn">WLAN</string>
+		<string name="extension_btn">扩展</string>
+		<string name="wlan_password_hdr">请输入密码</string>
+		<string name="wlan_password_prompt">请输入当前网络密码:</string>
+		<string name="wlan_encryption_hdr">安全性:</string>
+		<string name="wlan_password_hint">按返回按钮取消。</string>
+		<string name="wlan_log_hdr">此界面由 Jason 构建</string>
+		<string name="wlan_get_status_btn">获取状态</string>
+		<string name="wlan_test_network_btn">测试网络</string>
+		<string name="wlan_scan_btn">扫描</string>
+		<string name="wlan_connect_btn">连接</string>
+		<string name="wlan_stop_service_btn">停止服务</string>
+		<string name="wlan_start_service_btn">启动服务</string>
+		<string name="select_wlan_hdr">选择需要连接的WiFi</string>
+		<string name="next_btn">下一步</string>
 	</resources>
 </language>

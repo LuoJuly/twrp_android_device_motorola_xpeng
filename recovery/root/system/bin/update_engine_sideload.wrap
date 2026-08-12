@@ -1,0 +1,27 @@
+#!/system/bin/sh
+# Wrapper for A/B sideload: TWRP keeps ro.build.version.security_patch at
+# 2099-12-31 so Keymaster can unwrap FBE keys. update_engine compares the OTA
+# payload SPL against that prop; a real LOS SPL (e.g. 2026-08-01) looks like a
+# downgrade and schedules BCB --wipe_data (factory reset) even though the flash
+# itself succeeds.
+#
+# Temporarily lower the prop for the sideload only, then restore.
+REAL=/system/bin/update_engine_sideload.real
+if [ ! -x "$REAL" ]; then
+  echo "update_engine_sideload.real missing" >&2
+  exit 127
+fi
+
+SAVED="$(getprop ro.build.version.security_patch)"
+# Lexicographic YYYY-MM-DD: any real package SPL sorts after this.
+/system/bin/resetprop ro.build.version.security_patch 1970-01-01 2>/dev/null || \
+  setprop ro.build.version.security_patch 1970-01-01
+
+"$REAL" "$@"
+RC=$?
+
+if [ -n "$SAVED" ]; then
+  /system/bin/resetprop ro.build.version.security_patch "$SAVED" 2>/dev/null || \
+    setprop ro.build.version.security_patch "$SAVED"
+fi
+exit "$RC"

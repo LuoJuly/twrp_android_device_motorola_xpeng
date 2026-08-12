@@ -65,6 +65,21 @@ rm -f \
   "$ROOT"/system/bin/fastbootd \
   "$ROOT"/system/bin/minadbd
 
+# Wrap update_engine_sideload so forged 2099 SPL (Keymaster decrypt) does not
+# look like an OTA security-patch downgrade → BCB --wipe_data / powerwash.
+UE="$ROOT/system/bin/update_engine_sideload"
+WRAP="$DT_ROOT/system/bin/update_engine_sideload.wrap"
+if [[ -f "$UE" && -f "$WRAP" ]]; then
+  if [[ ! -f "$ROOT/system/bin/update_engine_sideload.real" ]]; then
+    mv "$UE" "$ROOT/system/bin/update_engine_sideload.real"
+  else
+    rm -f "$UE"
+  fi
+  cp -f "$WRAP" "$UE"
+  chmod 0755 "$UE" "$ROOT/system/bin/update_engine_sideload.real"
+  echo "xpeng slim-ramdisk: installed update_engine_sideload SPL wrapper"
+fi
+
 # BootControl for update_engine: ensure DT overlays win over bootable/recovery defaults.
 mkdir -p "$ROOT/system/etc/init" "$ROOT/system/etc/vintf/manifest"
 if [[ -f "$DT_ROOT/system/etc/recovery.fstab.default" ]]; then
