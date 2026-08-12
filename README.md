@@ -70,7 +70,7 @@ device/motorola/xpeng/scripts/enter-twrp.sh restore-vendor_boot
 3. **Crypto**: `wrappedkey_v0` + metadata FBE; keep patch dates at `2099-12-31` (`prepdecrypt.setpatch=false`) so decrypt matches Keymaster
 4. **No** SM8850 / KeyMint / Weaver trees — this device stays on Keymaster 4.1
 5. **Touch / thermal**: `runatboot` + `init_thermal` + LOS-matched modules
-6. **A/B zip install**: keep `update_engine_sideload` and a working HIDL `boot-hal-1-2` (impl under `/vendor/lib64/hw`, Android-format `/misc` fstab, VINTF declaration). A thin wrapper temporarily lowers `ro.build.version.security_patch` during sideload so the forged `2099-12-31` decrypt date does not trigger an SPL-downgrade powerwash (`BCB --wipe_data`)
+6. **A/B zip install**: keep `update_engine_sideload` and a working HIDL `boot-hal-1-2` (impl under `/vendor/lib64/hw`, Android-format `/misc` fstab, VINTF declaration). A thin wrapper temporarily sets `ro.build.version.security_patch` to the on-device system/vendor SPL (falls back to `1970-01-01`) during sideload so the forged `2099-12-31` decrypt date does not trigger an SPL-downgrade powerwash (`BCB --wipe_data`)
 
 ## Refresh blobs
 

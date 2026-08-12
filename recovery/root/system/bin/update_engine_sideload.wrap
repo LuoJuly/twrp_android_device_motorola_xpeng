@@ -5,17 +5,80 @@
 # downgrade and schedules BCB --wipe_data (factory reset) even though the flash
 # itself succeeds.
 #
-# Temporarily lower the prop for the sideload only, then restore.
+# Temporarily set the prop to the device's real system/vendor SPL for the
+# sideload only, then restore. If the real SPL cannot be read, fall back to
+# 1970-01-01 (always sorts before any real YYYY-MM-DD).
 REAL=/system/bin/update_engine_sideload.real
 if [ ! -x "$REAL" ]; then
   echo "update_engine_sideload.real missing" >&2
   exit 127
 fi
 
+prop_get_file() {
+  # $1=file $2=key
+  [ -f "$1" ] || return 1
+  grep -m1 "^$2=" "$1" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+}
+
+is_usable_spl() {
+  # Reject empty, non YYYY-MM-DD, and TWRP-forged / fallback dates.
+  case "$1" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    *) return 1 ;;
+  esac
+  case "$1" in
+    2099-*|1970-01-01) return 1 ;;
+  esac
+  return 0
+}
+
+maybe_mount_system() {
+  # Best-effort: only if build.prop is not already visible.
+  [ -f /system/build.prop ] && return 0
+  [ -f /system_root/system/build.prop ] && return 0
+  mount /system 2>/dev/null && return 0
+  mount /system_root 2>/dev/null && return 0
+  # TWRP helper if present
+  twrp mount system 2>/dev/null && return 0
+  return 1
+}
+
+read_device_spl() {
+  maybe_mount_system
+  # Prefer system SPL, then vendor.
+  for f in \
+    /system/build.prop \
+    /system_root/system/build.prop \
+    /system_root/build.prop \
+    /vendor/build.prop \
+    /vendor/etc/build.prop
+  do
+    for key in \
+      ro.build.version.security_patch \
+      ro.system.build.version.security_patch \
+      ro.vendor.build.security_patch
+    do
+      v="$(prop_get_file "$f" "$key")"
+      if is_usable_spl "$v"; then
+        echo "$v"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
 SAVED="$(getprop ro.build.version.security_patch)"
-# Lexicographic YYYY-MM-DD: any real package SPL sorts after this.
-/system/bin/resetprop ro.build.version.security_patch 1970-01-01 2>/dev/null || \
-  setprop ro.build.version.security_patch 1970-01-01
+TEMP_SPL="$(read_device_spl 2>/dev/null || true)"
+if ! is_usable_spl "$TEMP_SPL"; then
+  TEMP_SPL=1970-01-01
+  echo "update_engine_sideload.wrap: device SPL not found, using $TEMP_SPL" >&2
+else
+  echo "update_engine_sideload.wrap: using device SPL $TEMP_SPL" >&2
+fi
+
+/system/bin/resetprop ro.build.version.security_patch "$TEMP_SPL" 2>/dev/null || \
+  setprop ro.build.version.security_patch "$TEMP_SPL"
 
 "$REAL" "$@"
 RC=$?
