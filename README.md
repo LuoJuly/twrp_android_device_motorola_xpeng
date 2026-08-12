@@ -1,10 +1,57 @@
-# TWRP Android device tree for motorola XT2175 (xpeng)
+# TWRP device tree for Motorola xpeng (XT2175)
 
+The Motorola G200 5G / Edge S30 (codenamed _"xpeng"_) TWRP device tree for Android 12.1 (twrp-12.1).
+
+## Blobs
+
+Blobs from stock ROM `android-12-release-S3RXC32.33-8-29`
+
+## Kernel
+
+Prebuilt kernel from stock ROM `5.4.302-s3rxc32.33-8-25-ReSukiSU`
+
+## Compile
+
+First repo init the twrp-12.1 tree:
+
+```bash
+mkdir ~/android/twrp-12.1
+cd ~/android/twrp-12.1
+repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+mkdir -p .repo/local_manifests
 ```
-#
-# Copyright (C) 2026 The Android Open Source Project
-# Copyright (C) 2026 SebaUbuntu's TWRP device tree generator
-#
-# SPDX-License-Identifier: Apache-2.0
-#
+
+Then add a local manifest (e.g. `.repo/local_manifests/xpeng.xml`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="LuoJuly/twrp_android_device_motorola_xpeng"
+           path="device/motorola/xpeng"
+           remote="github"
+           revision="android-12.1"/>
+</manifest>
+```
+
+Sync sources:
+
+```bash
+repo sync
+```
+
+Build:
+
+```bash
+. build/envsetup.sh
+export ALLOW_MISSING_DEPENDENCIES=true
+lunch twrp_xpeng-eng
+mka bootimage
+```
+
+Output: `out/target/product/xpeng/boot.img` (recovery-as-boot).
+
+Temporary boot (recommended first):
+
+```bash
+fastboot boot out/target/product/xpeng/boot.img
 ```
