@@ -140,6 +140,8 @@ done
 if [[ -n "$STRIP_BIN" && -x "$STRIP_BIN" ]]; then
   echo "xpeng slim-ramdisk: stripping with $STRIP_BIN"
   while IFS= read -r -d '' f; do
+    # Skip scripts / non-ELF (e.g. update_engine_sideload wrapper).
+    [[ "$(file -b "$f" 2>/dev/null || true)" == *ELF* ]] || continue
     "$STRIP_BIN" --strip-unneeded "$f" 2>/dev/null || true
   done < <(find "$ROOT" \( -type f -name '*.so' -o -type f -path '*/bin/*' -o -type f -path '*/sbin/*' \) -print0 2>/dev/null)
 fi
