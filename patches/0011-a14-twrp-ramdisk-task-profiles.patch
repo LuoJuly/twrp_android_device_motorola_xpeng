@@ -1,0 +1,24 @@
+diff --git a/prebuilt/Android.mk b/prebuilt/Android.mk
+index f3b7160..6914314 100755
+--- a/prebuilt/Android.mk
++++ b/prebuilt/Android.mk
+@@ -461,7 +461,7 @@ LOCAL_POST_INSTALL_CMD += \
+     cp $(TARGET_OUT_VENDOR_ETC)/selinux/vndservice_contexts $(TARGET_RECOVERY_ROOT_OUT)/vendor/etc/selinux/vndservice_contexts && \
+     cp $(TARGET_OUT_VENDOR_ETC)/selinux/vendor_hwservice_contexts $(TARGET_RECOVERY_ROOT_OUT)/vendor/etc/selinux/vendor_hwservice_contexts && \
+     cp $(TARGET_OUT_ETC)/selinux/plat_keystore2_key_contexts $(TARGET_RECOVERY_ROOT_OUT)/system/etc/selinux/plat_keystore2_key_contexts && \
+-    cp $(TARGET_OUT_ETC)/task_profiles.json $(TARGET_RECOVERY_ROOT_OUT)/system/etc/task_profiles/task_profiles_30.json
++    (cp $(TARGET_OUT_ETC)/task_profiles.json $(TARGET_RECOVERY_ROOT_OUT)/system/etc/task_profiles/task_profiles_30.json 2>/dev/null || cp $(TARGET_OUT_ETC)/task_profiles/task_profiles_30.json $(TARGET_RECOVERY_ROOT_OUT)/system/etc/task_profiles/task_profiles_30.json)
+     ifeq ($(TARGET_USES_MKE2FS), true)
+         LOCAL_POST_INSTALL_CMD += \
+             && cp $(TARGET_OUT_ETC)/mke2fs.conf $(TARGET_RECOVERY_ROOT_OUT)/system/etc/mke2fs.conf
+@@ -473,7 +473,9 @@ LOCAL_REQUIRED_MODULES += init_second_stage.recovery \
+     plat_hardware_contexts \
+     vndservice_contexts \
+     plat_keystore2_key_contexts \
+-    vendor_hwservice_contexts
++    vendor_hwservice_contexts \
++    task_profiles.json \
++    task_profiles_30.json
+ 
+ include $(BUILD_PHONY_PACKAGE)
+ 

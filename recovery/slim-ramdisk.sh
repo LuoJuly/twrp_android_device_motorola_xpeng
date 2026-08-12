@@ -52,13 +52,60 @@ rm -f \
   "$ROOT"/system/bin/logcat \
   "$ROOT"/system/bin/exfat-fuse \
   "$ROOT"/system/bin/mkexfatfs \
-  "$ROOT"/system/bin/fsckexfat
+  "$ROOT"/system/bin/fsckexfat \
+  "$ROOT"/system/bin/memeater \
+  "$ROOT"/system/bin/charger \
+  "$ROOT"/system/bin/keystore_cli_v2 \
+  "$ROOT"/system/bin/avbctl \
+  "$ROOT"/system/bin/awk \
+  "$ROOT"/system/bin/bc \
+  "$ROOT"/system/bin/e2fsdroid \
+  "$ROOT"/system/bin/sgdisk \
+  "$ROOT"/system/bin/simg2img \
+  "$ROOT"/system/bin/ozip_decrypt \
+  "$ROOT"/system/bin/bu \
+  "$ROOT"/system/bin/linker_asan64 \
+  "$ROOT"/system/bin/linker_hwasan64
 
 rm -f \
   "$ROOT"/system/lib64/libclang_rt.ubsan_standalone-aarch64-android.so
 
+# A14 adbd is self-contained; these extras are pulled into recovery but unused.
+rm -f \
+  "$ROOT"/system/lib64/libadbd_services.so \
+  "$ROOT"/system/lib64/libadbconnection_server.so \
+  "$ROOT"/system/lib64/libadb_protos.so \
+  "$ROOT"/system/lib64/libapp_processes_protos_lite.so \
+  "$ROOT"/system/lib64/libadbd.so \
+  "$ROOT"/system/lib64/libadb_tls_connection.so \
+  "$ROOT"/system/lib64/libadb_crypto.so \
+  "$ROOT"/system/lib64/libadb_sysdeps.so \
+  "$ROOT"/system/lib64/libmdnssd.so \
+  "$ROOT"/system/lib64/libcutils_sockets.so \
+  "$ROOT"/system/lib64/libsoftkeymasterdevice.so \
+  "$ROOT"/system/lib64/libservices.so \
+  "$ROOT"/system/lib64/libnetd_client.so \
+  "$ROOT"/system/lib64/libutilscallstack.so \
+  "$ROOT"/system/lib64/libgatekeeper.so \
+  "$ROOT"/system/lib64/libext2_profile.so \
+  "$ROOT"/system/lib64/libandroid_runtime_lazy.so \
+  "$ROOT"/system/lib64/libnos_transport.so \
+  "$ROOT"/system/lib64/libnos_datagram.so \
+  "$ROOT"/system/lib64/libhidltransport.so \
+  "$ROOT"/system/lib64/android.system.suspend@1.0.so \
+  "$ROOT"/system/lib64/android.system.wifi.keystore@1.0.so \
+  "$ROOT"/system/lib64/android.hidl.token@1.0.so \
+  "$ROOT"/system/lib64/android.frameworks.stats-V1-ndk.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator@1.0.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator@1.1.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator@1.2.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator-V1-cpp.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator-V1-ndk.so \
+  "$ROOT"/system/lib64/android.hardware.vibrator-V2-cpp.so
+
 find "$ROOT/system" -name 'me.twrp.twrpapp.apk' -delete
 rm -f "$ROOT/system/etc/permissions/privapp-permissions-twrpapp.xml"
+rm -f "$ROOT"/system/bin/privapp-permissions-twrpapp.xml
 
 if [[ -d "$DT_ROOT/vendor/lib/modules" ]]; then
   rm -rf "$ROOT/vendor/lib/modules"
@@ -68,6 +115,23 @@ fi
 if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   rm -rf "$ROOT/vendor/firmware"
   cp -a "$DT_ROOT/vendor/firmware" "$ROOT/vendor/"
+fi
+
+# Extra strip pass (build already strips most targets; cheap remaining gains).
+STRIP_BIN=""
+if [[ -n "${ANDROID_BUILD_TOP:-}" ]]; then
+  STRIP_BIN="$(ls "${ANDROID_BUILD_TOP}"/prebuilts/clang/host/linux-x86/clang-*/bin/llvm-strip 2>/dev/null | tail -1 || true)"
+fi
+if [[ -z "$STRIP_BIN" && -n "${OUT:-}" ]]; then
+  _top="$(cd "${OUT}/../../.." && pwd)"
+  STRIP_BIN="$(ls "${_top}"/prebuilts/clang/host/linux-x86/clang-*/bin/llvm-strip 2>/dev/null | tail -1 || true)"
+fi
+if [[ -z "$STRIP_BIN" ]]; then
+  STRIP_BIN="$(command -v llvm-strip 2>/dev/null || true)"
+fi
+if [[ -n "$STRIP_BIN" && -x "$STRIP_BIN" ]]; then
+  find "$ROOT" -type f ! -type l -size +1k -print0 \
+    | xargs -0 -r -n 40 "$STRIP_BIN" --strip-all 2>/dev/null || true
 fi
 
 echo "xpeng slim-ramdisk: $(du -sh "$ROOT" | awk '{print $1}')"

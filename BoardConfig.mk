@@ -136,6 +136,14 @@ RECOVERY_LIBRARY_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
 # QTI AIDL vibrator (qcom-hv-haptics input FF) — ship HAL into recovery ramdisk
 TW_SUPPORT_INPUT_AIDL_HAPTICS := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
+# Soong knobs expected by vendor/qcom/opensource/vibrator (twrp-14.1)
+SOONG_CONFIG_NAMESPACES += qti_vibrator vibrator
+SOONG_CONFIG_qti_vibrator += use_effect_stream effect_lib
+SOONG_CONFIG_qti_vibrator_use_effect_stream := false
+SOONG_CONFIG_qti_vibrator_effect_lib := libqtivibratoreffect
+SOONG_CONFIG_vibrator += vibratortargets
+# A14 uses -ndk (not -ndk_platform)
+SOONG_CONFIG_vibrator_vibratortargets := vibratoraidlV2target
 TARGET_RECOVERY_DEVICE_MODULES += \
     vendor.qti.hardware.vibrator.service \
     vendor.qti.hardware.vibrator.impl \
@@ -153,7 +161,8 @@ _empty :=
 _space := $(_empty) $(_empty)
 TW_DEVICE_VERSION := 0_by$(_space)LuoJuly
 TW_THEME := portrait_hdpi
-TW_EXTRA_LANGUAGES := true
+# Languages pruned in slim-ramdisk.sh to en + zh_CN; skip shipping the full set.
+TW_EXTRA_LANGUAGES := false
 TW_SCREEN_BLANK_ON_BOOT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true

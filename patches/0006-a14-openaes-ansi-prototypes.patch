@@ -1,0 +1,61 @@
+diff --git a/openaes/Android.mk b/openaes/Android.mk
+index 7c6b5bd..7e85c51 100755
+--- a/openaes/Android.mk
++++ b/openaes/Android.mk
+@@ -23,6 +23,7 @@ ifneq ($(TW_EXCLUDE_ENCRYPTED_BACKUPS), true)
+ 		$(commands_recovery_local_path)/openaes/src/isaac \
+ 		$(commands_recovery_local_path)/openaes/inc
+ 	LOCAL_SRC_FILES = src/oaes_lib.c src/isaac/rand.c src/ftime.c
++	LOCAL_CFLAGS += -Wno-error=deprecated-non-prototype -Wno-deprecated-non-prototype
+ 	LOCAL_SHARED_LIBRARIES = libc
+ 	include $(BUILD_SHARED_LIBRARY)
+ 
+@@ -34,6 +35,7 @@ ifneq ($(TW_EXCLUDE_ENCRYPTED_BACKUPS), true)
+ 		$(commands_recovery_local_path)/openaes/src/isaac \
+ 		$(commands_recovery_local_path)/openaes/inc
+ 	LOCAL_SRC_FILES = src/oaes_lib.c src/isaac/rand.c src/ftime.c
++	LOCAL_CFLAGS += -Wno-error=deprecated-non-prototype -Wno-deprecated-non-prototype
+ 	LOCAL_STATIC_LIBRARIES = libc
+ 	include $(BUILD_STATIC_LIBRARY)
+ endif
+diff --git a/openaes/src/isaac/rand.c b/openaes/src/isaac/rand.c
+index 63babc7..f9e34b7 100644
+--- a/openaes/src/isaac/rand.c
++++ b/openaes/src/isaac/rand.c
+@@ -25,8 +25,7 @@ MODIFIED:
+   *(r++) = b = ind(mm,y>>RANDSIZL) + x; \
+ }
+ 
+-void     isaac(ctx)
+-randctx *ctx;
++void isaac(randctx *ctx)
+ {
+    register ub4 a,b,x,y,*m,*mm,*m2,*r,*mend;
+    mm=ctx->randmem; r=ctx->randrsl;
+@@ -62,9 +61,7 @@ randctx *ctx;
+ }
+ 
+ /* if (flag==TRUE), then use the contents of randrsl[] to initialize mm[]. */
+-void randinit(ctx, flag)
+-randctx *ctx;
+-word     flag;
++void randinit(randctx *ctx, word flag)
+ {
+    word i;
+    ub4 a,b,c,d,e,f,g,h;
+diff --git a/openaes/src/isaac/rand.h b/openaes/src/isaac/rand.h
+index 73f6e3e..dbe12fe 100644
+--- a/openaes/src/isaac/rand.h
++++ b/openaes/src/isaac/rand.h
+@@ -36,9 +36,9 @@ typedef  struct randctx  randctx;
+  If (flag==TRUE), then use the contents of randrsl[0..RANDSIZ-1] as the seed.
+ ------------------------------------------------------------------------------
+ */
+-void randinit(/*_ randctx *r, word flag _*/);
++void randinit(randctx *r, word flag);
+ 
+-void isaac(/*_ randctx *r _*/);
++void isaac(randctx *r);
+ 
+ 
+ /*

@@ -1,0 +1,25 @@
+// Provide qti_vibrator_hal_defaults for vendor/qcom/opensource/vibrator on
+// twrp-14.1 (normally supplied by Lineage/vendor soong configs).
+soong_config_module_type {
+    name: "qti_vibrator_hal",
+    module_type: "cc_defaults",
+    config_namespace: "qti_vibrator",
+    bool_variables: ["use_effect_stream"],
+    value_variables: ["effect_lib"],
+    properties: [
+        "cppflags",
+        "shared_libs",
+    ],
+}
+
+qti_vibrator_hal {
+    name: "qti_vibrator_hal_defaults",
+    soong_config_variables: {
+        use_effect_stream: {
+            cppflags: ["-DUSE_EFFECT_STREAM"],
+        },
+        effect_lib: {
+            shared_libs: ["%s"],
+        },
+    },
+}

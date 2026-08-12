@@ -1,0 +1,23 @@
+From: xpeng device tree
+Subject: [PATCH] recovery: link libsysutils for libvold NetlinkEvent
+
+VolumeManager in libvold references NetlinkEvent::dump/findParam from
+libsysutils. A14 recovery already packages libsysutils into ramdisk for
+logd, but did not link it into the recovery binary.
+
+---
+ Android.mk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Android.mk b/Android.mk
+index 0000000..0000001 100755
+--- a/Android.mk
++++ b/Android.mk
+@@ -330,6 +330,7 @@ endif
+ ifeq ($(TW_INCLUDE_CRYPTO), true)
+     LOCAL_CFLAGS += -DTW_INCLUDE_CRYPTO -DUSE_FSCRYPT -Wno-macro-redefined
+     LOCAL_SHARED_LIBRARIES += libgpt_twrp
++    LOCAL_SHARED_LIBRARIES += libsysutils
+     LOCAL_C_INCLUDES += external/boringssl/src/include bootable/recovery/crypto
+     TW_INCLUDE_CRYPTO_FBE := true
+     LOCAL_CFLAGS += -DTW_INCLUDE_FBE
