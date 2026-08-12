@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Place as: <twrp-16.0>/.repo/local_manifests/xpeng.xml
+
+  Prefer a local copy/symlink while developing:
+    mkdir -p device/motorola
+    ln -sfn /path/to/twrp_android_device_motorola_xpeng_lineage device/motorola/xpeng
+
+  Or publish the tree and enable the project below.
+-->
+<manifest>
+  <!--
+  <project name="LuoJuly/twrp_android_device_motorola_xpeng_lineage"
+           path="device/motorola/xpeng"
+           remote="github"
+           revision="lineage-23.2"/>
+  -->
+</manifest>

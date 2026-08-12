@@ -1,7 +1,11 @@
-<!-- QID vibrator AIDL HAL for TWRP recovery haptics -->
-<manifest version="1.0" type="device">
+<!--
+    Input:
+        vendor/qcom/opensource/vibrator/aidl/vendor.qti.hardware.vibrator.service.xml
+-->
+<manifest version="9.0" type="device">
     <hal format="aidl">
         <name>android.hardware.vibrator</name>
+        <version>2</version>
         <fqname>IVibrator/default</fqname>
     </hal>
 </manifest>

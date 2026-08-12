@@ -1,1 +1,10 @@
+.extract/
+*.img
+!prebuilt/dtbo.img
+payload_parts/
+*.pyc
+__pycache__/
 recovery/fonts-src/DroidSansFallback.ttf.full
+prebuilt/vendor_boot_*.img
+prebuilt/kernel.dirty-phone.bak
+patches/.gen/

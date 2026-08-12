@@ -8,8 +8,7 @@
 PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/twrp_xpeng.mk
 
-# Android 14+ lunch form: <product>-<release>-<variant>
 COMMON_LUNCH_CHOICES := \
-    twrp_xpeng-ap2a-user \
-    twrp_xpeng-ap2a-userdebug \
-    twrp_xpeng-ap2a-eng
+    twrp_xpeng-eng \
+    twrp_xpeng-userdebug \
+    twrp_xpeng-user

@@ -4,6 +4,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
+# TWRP for Motorola xpeng on LineageOS 23.2 (Android 16 QPR2).
+# Build with: TWRP-Test platform_manifest_twrp_aosp -b twrp-16.0
+#
 
 DEVICE_PATH := device/motorola/xpeng
 
@@ -13,26 +16,32 @@ ALLOW_MISSING_DEPENDENCIES := true
 # A/B
 AB_OTA_UPDATER := true
 AB_OTA_PARTITIONS += \
-    system \
+    boot \
+    dtbo \
     product \
+    system \
     system_ext \
-    vendor
+    vbmeta \
+    vbmeta_system \
+    vendor \
+    vendor_boot
 BOARD_USES_RECOVERY_AS_BOOT := true
+TARGET_NO_RECOVERY := true
 
-# Architecture
+# Architecture (match LineageOS sm7325-common / lineage-23.2)
 TARGET_ARCH := arm64
-TARGET_ARCH_VARIANT := armv8-a
+TARGET_ARCH_VARIANT := armv8-2a-dotprod
 TARGET_CPU_ABI := arm64-v8a
-TARGET_CPU_ABI2 := 
+TARGET_CPU_ABI2 :=
 TARGET_CPU_VARIANT := generic
-TARGET_CPU_VARIANT_RUNTIME := kryo300
+TARGET_CPU_VARIANT_RUNTIME := kryo385
 
 TARGET_2ND_ARCH := arm
-TARGET_2ND_ARCH_VARIANT := armv7-a-neon
+TARGET_2ND_ARCH_VARIANT := armv8-a
 TARGET_2ND_CPU_ABI := armeabi-v7a
 TARGET_2ND_CPU_ABI2 := armeabi
 TARGET_2ND_CPU_VARIANT := generic
-TARGET_2ND_CPU_VARIANT_RUNTIME := cortex-a75
+TARGET_2ND_CPU_VARIANT_RUNTIME := kryo385
 
 # APEX
 DEXPREOPT_GENERATE_APEX_IMAGE := true
@@ -41,64 +50,73 @@ DEXPREOPT_GENERATE_APEX_IMAGE := true
 TARGET_BOOTLOADER_BOARD_NAME := xpeng
 TARGET_NO_BOOTLOADER := true
 
-# Display (panel 1080x2460; density left unchanged)
+# Display (panel 1080x2460)
 TARGET_SCREEN_WIDTH := 1080
 TARGET_SCREEN_HEIGHT := 2460
 TARGET_SCREEN_DENSITY := 400
 
-# Kernel
-BOARD_BOOTIMG_HEADER_VERSION := 3
-BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOTIMG_HEADER_VERSION)
+# Kernel — prebuilt from LineageOS 23.2 nightly boot.img
+BOARD_BOOT_HEADER_VERSION := 3
+BOARD_KERNEL_BASE := 0x00000000
+BOARD_KERNEL_PAGESIZE := 4096
 BOARD_KERNEL_IMAGE_NAME := Image
-TARGET_KERNEL_CONFIG := xpeng_defconfig
-TARGET_KERNEL_SOURCE := kernel/motorola/xpeng
+BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
+BOARD_MKBOOTIMG_ARGS += --base $(BOARD_KERNEL_BASE)
+BOARD_MKBOOTIMG_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
+BOARD_KERNEL_CMDLINE := console=ttyMSM0,115200n8 androidboot.hardware=qcom androidboot.console=ttyMSM0
+BOARD_KERNEL_CMDLINE += androidboot.memcg=1 lpm_levels.sleep_disabled=1
+BOARD_KERNEL_CMDLINE += service_locator.enable=1 androidboot.usbcontroller=a600000.dwc3
+BOARD_KERNEL_CMDLINE += swiotlb=0 loop.max_part=7 cgroup.memory=nokmem,nosocket
+BOARD_KERNEL_CMDLINE += pcie_ports=compat iptable_raw.raw_before_defrag=1
+BOARD_KERNEL_CMDLINE += ip6table_raw.raw_before_defrag=1
+BOARD_KERNEL_CMDLINE += firmware_class.path=/vendor/firmware_mnt/image
+BOARD_KERNEL_CMDLINE += androidboot.hab.product=xpeng
 
-# Kernel - prebuilt
 TARGET_FORCE_PREBUILT_KERNEL := true
-ifeq ($(TARGET_FORCE_PREBUILT_KERNEL),true)
 TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
-endif
+# dtbo.img kept under prebuilt/ for optional flashing; DTBO is its own partition
+# on this device (do not embed into recovery-as-boot).
+# DTB lives in vendor_boot (see prebuilt/dtb).
 
-# Large recovery ramdisk panics this KernelSU Image in unpack_to_rootfs.
-# Prefer LZ4 + aggressive size cuts (target ~OEM unc ~25MB).
+# Prefer LZ4 + size cuts (recovery-as-boot ramdisk budget).
+# Motokernel fails unpack if initramfs is far above LOS (~40MB unpacked).
 BOARD_RAMDISK_USE_LZ4 := true
 TW_EXCLUDE_BASH := true
 TW_EXCLUDE_NANO := true
 TW_NO_EXFAT := true
 TW_NO_EXFAT_FUSE := true
+TW_NO_NETWORK := true
 TW_INCLUDE_REPACKTOOLS := false
 TW_EXCLUDE_TZDATA := true
-# Drop logd/logcat from ramdisk (~1MB); use pstore /adb when needed.
 TWRP_INCLUDE_LOGCAT := false
 TARGET_USES_LOGD := false
-# Late slim immediately before mkbootfs (after all recovery installs).
 BOARD_RECOVERY_IMAGE_PREPARE := $(DEVICE_PATH)/recovery/slim-ramdisk.sh
 
-# Partitions
+# Partitions (LineageOS 23.2 BoardConfig)
+BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
-BOARD_RECOVERYIMAGE_PARTITION_SIZE := 100663296
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 100663296
+BOARD_DTBOIMG_PARTITION_SIZE := 25165824
 BOARD_HAS_LARGE_FILESYSTEM := true
-# Build-time types: match tundra (erofs). Runtime mount still uses dual fstab.
-BOARD_SYSTEMIMAGE_PARTITION_TYPE := erofs
-BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+# Lineage 23.2 uses ext4 for logical partitions (not erofs)
+BOARD_SYSTEMIMAGE_PARTITION_TYPE := ext4
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 TARGET_COPY_OUT_VENDOR := vendor
 TARGET_COPY_OUT_PRODUCT := product
 TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-# Match LineageOS / stock xpeng super (8 GiB) and mot_dp_group naming so
-# update_engine_sideload can prepare Virtual A/B metadata for official OTAs.
 BOARD_SUPER_PARTITION_SIZE := 8589934592
 BOARD_SUPER_PARTITION_GROUPS := mot_dp_group
-BOARD_MOT_DP_GROUP_SIZE := 8585740288 # SUPER - 4MiB
-# No odm: this ROM has no odm mapper (matches recovery.fstab).
-BOARD_MOT_DP_GROUP_PARTITION_LIST := system system_ext product vendor
+BOARD_MOT_DP_GROUP_PARTITION_LIST := product system system_ext vendor
+BOARD_MOT_DP_GROUP_SIZE := 8585740288
 
 # Platform
 TARGET_BOARD_PLATFORM := lahaina
 QCOM_BOARD_PLATFORMS += lahaina
+BOARD_USES_QCOM_HARDWARE := true
 
 # Recovery
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
@@ -106,44 +124,45 @@ TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery.fstab
 RECOVERY_SDCARD_ON_DATA := true
+TARGET_RECOVERY_UI_MARGIN_HEIGHT := 90
 
 # Verified Boot
 BOARD_AVB_ENABLE := true
 BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 
-# Encryption / FBE (stock A12: wrappedkey_v0 + metadata keydirectory)
+# Encryption / FBE (Lineage fstab.qcom: wrappedkey_v0 + metadata keydirectory)
 BOARD_USES_METADATA_PARTITION := true
 BOARD_USES_QCOM_FBE_DECRYPTION := true
 TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
 TW_USE_FSCRYPT_POLICY := 2
-# Manifest has @4.1 but TWRP maps any "4*" → keymaster_ver=4.x, which starts
-# BOTH 4.0 and 4.1 HALs as "default" and races km_compat / keystore2.
+# Manifest has @4.1; force single HAL to avoid 4.0/4.1 race
 TW_FORCE_KEYMASTER_VER := true
 TW_INCLUDE_RESETPROP := true
 TW_EXCLUDE_APEX := true
-# Match qcom prepdecrypt defaults; real patch pulled from system/vendor when possible
+# Match qcom prepdecrypt defaults, but keep forged 2099 patch levels.
+# prepdecrypt.setpatch must stay false (see init.recovery.qcom.rc) so Keymaster
+# can upgrade wrappedkey_v0 metadata keys. xpeng uses Keymaster 4.1 (not KeyMint).
 PLATFORM_VERSION := 99.87.36
 PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
 PLATFORM_SECURITY_PATCH := 2099-12-31
 VENDOR_SECURITY_PATCH := 2099-12-31
+BOOT_SECURITY_PATCH := 2099-12-31
 
-# libs required by qseecomd / keymaster (missing libion caused splash hang)
-TARGET_RECOVERY_DEVICE_MODULES += libion
-RECOVERY_LIBRARY_SOURCE_FILES += $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
+# libs required by qseecomd / keymaster / FBE (recovery links libsysutils when
+# TW_INCLUDE_CRYPTO_FBE, but TWRP only auto-packages it with logd — we disable
+# logd, so ship it explicitly or recovery crashes at start → reboot to system)
+TARGET_RECOVERY_DEVICE_MODULES += \
+    libion \
+    libsysutils
+RECOVERY_LIBRARY_SOURCE_FILES += \
+    $(TARGET_OUT_SHARED_LIBRARIES)/libion.so \
+    $(TARGET_OUT_SHARED_LIBRARIES)/libsysutils.so
 
-# QTI AIDL vibrator (qcom-hv-haptics input FF) — ship HAL into recovery ramdisk
+# QTI AIDL vibrator
 TW_SUPPORT_INPUT_AIDL_HAPTICS := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
-# Soong knobs expected by vendor/qcom/opensource/vibrator (twrp-14.1)
-SOONG_CONFIG_NAMESPACES += qti_vibrator vibrator
-SOONG_CONFIG_qti_vibrator += use_effect_stream effect_lib
-SOONG_CONFIG_qti_vibrator_use_effect_stream := false
-SOONG_CONFIG_qti_vibrator_effect_lib := libqtivibratoreffect
-SOONG_CONFIG_vibrator += vibratortargets
-# A14 uses -ndk (not -ndk_platform)
-SOONG_CONFIG_vibrator_vibratortargets := vibratoraidlV2target
 TARGET_RECOVERY_DEVICE_MODULES += \
     vendor.qti.hardware.vibrator.service \
     vendor.qti.hardware.vibrator.impl \
@@ -155,46 +174,32 @@ RECOVERY_LIBRARY_SOURCE_FILES += \
     $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libqtivibratoreffect.so
 
 # TWRP Configuration
-# portrait_hdpi (1080x1920) scaled to 1080x2460 — best stock theme for this panel
-# Shown as: 3.7.1_14-<TW_DEVICE_VERSION> on twrp-14.1
 _empty :=
 _space := $(_empty) $(_empty)
-TW_DEVICE_VERSION := 0_by$(_space)LuoJuly
+TW_DEVICE_VERSION := 0_lineage_by$(_space)LuoJuly
 TW_THEME := portrait_hdpi
-# Languages pruned in slim-ramdisk.sh to en + zh_CN; skip shipping the full set.
+# en + zh_CN only (slim-ramdisk.sh); full language pack bloats twres.
 TW_EXTRA_LANGUAGES := false
-TW_SCREEN_BLANK_ON_BOOT := true
+# Keep screen on at boot so a failed touch/display bring-up is not mistaken for a
+# dead boot (TW_SCREEN_BLANK_ON_BOOT blanks until first input).
+TW_SCREEN_BLANK_ON_BOOT := false
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_USE_TOOLBOX := true
-# Enable password-encrypted TWRP backups (openaes). Must be non-empty and not
-# the string "true" — see bootable/recovery/Android.mk + openaes/Android.mk.
 TW_EXCLUDE_ENCRYPTED_BACKUPS := false
-# lahaina RTC ticks from 1970; real time = rtc + /data/vendor/time/ats_*
 TARGET_RECOVERY_QCOM_RTC_FIX := true
-# POSIX UTC+8 (Beijing, no DST). Wired through recovery Android.mk → data.cpp.
 TW_DEFAULT_TIMEZONE := CST-8
-# MTP via configfs ffs.mtp (see init.recovery.usb.rc). UMS remains mass_storage.0.
-# Do NOT set TW_EXCLUDE_MTP.
-# Legacy sysfs battery (health HAL failure previously faked 100%).
-# Capacity/status published by init_thermal.sh — direct battery/capacity is
-# often unreadable early, which makes tw_battery="-1%" and hides the widget.
 TW_USE_LEGACY_BATTERY_SERVICES := true
 TW_CUSTOM_BATTERY_PATH := /tmp/twrp_battery
-# Published by init_thermal.sh (zone0 often missing until ADSP/QMI is up).
 TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
 BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
 
-# -----------------------------------------------------------------------------
-# Touch (Novatek + mmi) for recovery
-# Primary path: recovery/root/{vendor/lib/modules,vendor/firmware,system/bin}
-# + init.recovery.qcom.rc exec /system/bin/runatboot (insmod -f for vermagic skew)
-#
-# TW_LOAD_VENDOR_MODULES uses modprobe (no -f) and is NOT sufficient alone when
-# .ko vermagic != prebuilt/kernel release. Keep it commented unless modules are
-# rebuilt against this exact Image.
-#
-# TW_LOAD_VENDOR_MODULES := "mmi_annotate.ko mmi_relay.ko sensors_class.ko touchscreen_mmi.ko nova_0flash_mmi.ko"
-# TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
-# -----------------------------------------------------------------------------
+# Load display/touch modules before gui_init (msm_drm must be early).
+# Also loaded from init.recovery.qcom.rc (early-init) and runatboot.sh.
+# vermagic must match prebuilt/kernel (Lineage 5.4.302-moto-g057847a8c116).
+TW_LOAD_VENDOR_MODULES := "msm_drm.ko mmi_annotate.ko mmi_info.ko mmi_relay.ko sensors_class.ko touchscreen_mmi.ko nova_0flash_mmi.ko"
+TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
 
 TARGET_SYSTEM_PROP += $(DEVICE_PATH)/system.prop
+
+# Force UFFD GC off for Motokernel 5.4 (overrides PRODUCT_ENABLE_UFFD_GC=default)
+OVERRIDE_ENABLE_UFFD_GC := false

@@ -1,10 +1,7 @@
-# mount point / device layout
-# Logical partitions (v2 fstab like bangkk-twrp): list ext4 + erofs so TWRP
-# Save_FS_Flags merges both; Check_FS_Type picks the real FS at mount.
-# Prefer ext4 first (stock xpeng / main). erofs covers LOS / newer images.
-# system_root mirrors bangkk: same /system mount; TWRP remaps to /system_root.
-# fs_mgr "ro": stock ext4 SHARED_BLOCKS — RDWR → Invalid argument.
-# No odm lines: this ROM has no odm mapper (unable to update logical partition).
+# mount point / device layout — LineageOS 23.2 (Android 16 QPR2) for xpeng
+# Logical partitions: Lineage uses ext4; keep erofs as fallback for other images.
+# fs_mgr "ro": SHARED_BLOCKS / erofs must stay read-only.
+# No odm: Lineage sm7325-common has no odm mapper.
 system       /system       ext4    ro      wait,slotselect,logical,display="System",backup=1
 system       /system       erofs   ro      wait,slotselect,logical,display="System",backup=1
 system_root  /system       ext4    ro      wait,slotselect,logical,display="System",backup=1
@@ -16,18 +13,19 @@ product      /product      erofs   ro      wait,slotselect,logical,display="Prod
 vendor       /vendor       ext4    ro      wait,slotselect,logical,display="Vendor",backup=1
 vendor       /vendor       erofs   ro      wait,slotselect,logical,display="Vendor",backup=1
 /metadata       ext4     /dev/block/bootdevice/by-name/metadata     flags=display="Metadata";fsflags="fileencryption=off"
+# Match Lineage fstab.qcom userdata encryption flags
 /data           f2fs     /dev/block/bootdevice/by-name/userdata     flags=fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0:metadata_encryption=aes-256-xts:wrappedkey_v0,keydirectory=/metadata/vold/metadata_encryption;display="Data"
 /persist        ext4     /dev/block/bootdevice/by-name/persist      flags=display="Persist";backup=1
 /prodpersist    ext4     /dev/block/bootdevice/by-name/prodpersist  flags=display="ProdPersist"
 /firmware       ext4     /dev/block/bootdevice/by-name/modem        flags=display="Firmware";slotselect;backup=1
 /dsp            ext4     /dev/block/bootdevice/by-name/dsp          flags=display="DSP";slotselect
 /bt_firmware    ext4     /dev/block/bootdevice/by-name/bluetooth    flags=display="BT Firmware";slotselect
-# Removable storage — Android v2 lines MUST start with /devices/ so TWRP sets
-# Sysfs_Entry and matches block uevents (v1 /mount /devices/... never hotplugs).
-# Use exact a600000.ssusb path: prefix matching before the first '*' would otherwise
-# match all of /devices/platform/soc/ (including UFS). FS=auto → FAT32 + exFAT.
+/fsg            ext4     /dev/block/bootdevice/by-name/fsg          flags=display="FSG";slotselect
+# Removable storage — v2 sysfs paths for hotplug
 /devices/platform/soc/8804000.sdhci/mmc_host*                      /external_sd  auto  defaults  display="MicroSD",storage,wipeingui,removable
 /devices/platform/soc/1da4000.ufshc_card/host*                      /external_sd  auto  defaults  display="MicroSD",storage,wipeingui,removable
 /devices/platform/soc/a600000.ssusb/a600000.dwc3/xhci-hcd.*.auto*   /usb-otg      auto  defaults  display="USB-OTG",storage,wipeingui,removable
 /boot           emmc     /dev/block/bootdevice/by-name/boot         flags=display="Boot";backup=1;flashimg=1;slotselect
+/vendor_boot    emmc     /dev/block/bootdevice/by-name/vendor_boot  flags=display="Vendor Boot";backup=1;flashimg=1;slotselect
+/dtbo           emmc     /dev/block/bootdevice/by-name/dtbo         flags=display="DTBO";backup=1;flashimg=1;slotselect
 /misc           emmc     /dev/block/bootdevice/by-name/misc         flags=display="Misc";backup=1;flashimg=1

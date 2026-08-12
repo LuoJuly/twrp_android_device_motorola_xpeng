@@ -1,0 +1,14 @@
+<!-- HIDL IBootControl for recovery update_engine_sideload / metadata checkpoint.
+     Vendor AIDL boot-service.qti is disabled (SIGABRT in recovery). Without this
+     fragment, registerAsService fails with "must be in VINTF manifest" and the
+     passthrough HAL exits immediately. Framework type matches other recovery
+     HIDL entries (android.hidl.manager). -->
+<manifest version="1.0" type="framework">
+    <hal format="hidl">
+        <name>android.hardware.boot</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.2::IBootControl/default</fqname>
+        <fqname>@1.1::IBootControl/default</fqname>
+        <fqname>@1.0::IBootControl/default</fqname>
+    </hal>
+</manifest>

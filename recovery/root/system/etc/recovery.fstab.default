@@ -1,0 +1,10 @@
+# Android fs_mgr fstab for recovery BootControl / update_engine_sideload.
+# TWRP's /etc/recovery.fstab is TWRP UI format and cannot be parsed by libfstab.
+# InRecovery() → GetRecoveryFstabPath() prefers recovery.fstab.<fstab_suffix>;
+# xpeng uses androidboot.fstab_suffix=default.
+/dev/block/bootdevice/by-name/misc                      /misc                    emmc    defaults                                             defaults
+/dev/block/by-name/metadata                             /metadata                ext4    noatime,nosuid,nodev,discard,data=ordered,barrier=1  wait,formattable,first_stage_mount,check
+system                                                  /system                  ext4    ro,discard                                           wait,slotselect,logical,first_stage_mount
+system_ext                                              /system_ext              ext4    ro,discard                                           wait,slotselect,logical,first_stage_mount
+product                                                 /product                 ext4    ro,discard                                           wait,slotselect,logical,first_stage_mount
+vendor                                                  /vendor                  ext4    ro,discard                                           wait,slotselect,avb,logical,first_stage_mount

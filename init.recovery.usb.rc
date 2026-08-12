@@ -1,0 +1,67 @@
+# Override TWRP's legacy android_usb init.recovery.usb.rc.
+# xpeng / lahaina uses configfs (sys.usb.configfs=1); writing
+# /sys/class/android_usb/android0/* fails and aborts those actions.
+# Gadget bind/unbind is handled by stock recovery init.rc configfs rules
+# (same as LineageOS init.qcom.recovery.rc + hw/init.rc).
+#
+# Extra:
+#   - mass_storage.0 for TWRP USB Storage (UMS)
+#   - ffs.mtp created/mounted only when Mount → Enable MTP (avoids dual-FFS
+#     interference with adbd at boot)
+#   - mtp_usb_guard: if MTP ffs never becomes ready, restore adb
+
+# After stock init.rc creates g1 + ffs.* on (fs && configfs=1), add UMS.
+on fs && property:sys.usb.configfs=1
+    mkdir /config/usb_gadget/g1/functions/mass_storage.0 0770 root root
+
+on boot
+    mkdir /config/usb_gadget/g1/functions/mass_storage.0 0770 root root
+
+# UMS + ADB (TWRP Mount → USB Storage sets sys.usb.config=mass_storage,adb)
+on property:sys.usb.config=mass_storage,adb && property:sys.usb.ffs.ready=1 && property:sys.usb.configfs=1
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g1/idProduct 0xD001
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "ums,adb"
+    rm /config/usb_gadget/g1/configs/b.1/f1
+    rm /config/usb_gadget/g1/configs/b.1/f2
+    symlink /config/usb_gadget/g1/functions/mass_storage.0 /config/usb_gadget/g1/configs/b.1/f1
+    symlink /config/usb_gadget/g1/functions/ffs.adb /config/usb_gadget/g1/configs/b.1/f2
+    write /config/usb_gadget/g1/UDC ${sys.usb.controller}
+    start adbd
+    setprop sys.usb.state ${sys.usb.config}
+
+# MTP + ADB — only when user enables MTP (not auto-started on boot).
+on property:sys.usb.config=mtp,adb && property:sys.usb.configfs=1
+    mkdir /config/usb_gadget/g1/functions/ffs.mtp 0770 root root
+    mkdir /dev/usb-ffs 0770 shell shell
+    mkdir /dev/usb-ffs/mtp 0770 shell shell
+    mount functionfs mtp /dev/usb-ffs/mtp rmode=0770,fmode=0660,uid=1000,gid=1000
+    start adbd
+    start mtp_usb_guard
+
+on property:sys.usb.ffs.ready=1 && property:sys.usb.ffs.mtp.ready=1 && property:sys.usb.config=mtp,adb && property:sys.usb.configfs=1
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g1/idVendor 0x18D1
+    write /config/usb_gadget/g1/idProduct 0x4EE2
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "mtp,adb"
+    rm /config/usb_gadget/g1/configs/b.1/f1
+    rm /config/usb_gadget/g1/configs/b.1/f2
+    symlink /config/usb_gadget/g1/functions/ffs.mtp /config/usb_gadget/g1/configs/b.1/f1
+    symlink /config/usb_gadget/g1/functions/ffs.adb /config/usb_gadget/g1/configs/b.1/f2
+    write /config/usb_gadget/g1/UDC ${sys.usb.controller}
+    setprop sys.usb.state ${sys.usb.config}
+
+# Drop secondary function when leaving composite modes (stock adb rule binds f1).
+on property:sys.usb.config=adb && property:sys.usb.configfs=1
+    rm /config/usb_gadget/g1/configs/b.1/f2
+
+on property:sys.usb.config=none && property:sys.usb.configfs=1
+    setprop sys.usb.ffs.mtp.ready 0
+    rm /config/usb_gadget/g1/configs/b.1/f2
+
+service mtp_usb_guard /system/bin/mtp_usb_guard.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0

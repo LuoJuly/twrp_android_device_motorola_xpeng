@@ -2,10 +2,14 @@ ro.recovery.usb.vid=18D1
 ro.recovery.usb.adb.pid=D001
 ro.recovery.usb.fastboot.pid=4EE0
 
-# FBE / dm-default-key (match stock Android 12)
+# Virtual A/B (Lineage xpeng / sm7325). Without this, update_engine_sideload
+# treats super as classic A/B and rejects full-slot groups (~8GB > super/2).
+ro.virtual_ab.enabled=true
+
+# FBE / dm-default-key (match LineageOS 23.2 fstab.qcom)
 ro.crypto.dm_default_key.options_format.version=2
 ro.crypto.volume.metadata.method=dm-default-key
 ro.crypto.uses_fs_ioc_add_encryption_key=true
 vendor.gatekeeper.disable_spu=true
-# Drive qcom decrypt rc to start keymaster-4-1-qti
+# Drive qcom decrypt rc to start keymaster-4-1-qti (Lineage vendor)
 keymaster_ver=4.1

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Late slim of TARGET_RECOVERY_ROOT_OUT (run after all recovery installs).
 # Prefer $1; else $OUT/recovery/root; else out/target/product/*/recovery/root.
+#
+# Motokernel rejects oversized initramfs ("Could not decompress" / "RAMDISK: image
+# too big"). LOS boot ramdisk ~20MB compressed / ~40MB unpacked; keep TWRP closer.
 set -euo pipefail
 ROOT=""
 if [[ -n "${1:-}" && -d "${1}" ]]; then
@@ -46,6 +49,9 @@ rm -f \
   "$ROOT"/res/images/loop*.png
 
 # Keep orscmd (installs as system/bin/twrp) and zip (same as main).
+# Keep update_engine_sideload — A/B Lineage signed zips require it to flash the
+# inactive slot (TWRP execs /system/bin/update_engine_sideload). update_verifier
+# is not needed for sideload and can stay deleted for ramdisk size.
 rm -f \
   "$ROOT"/system/bin/magiskboot \
   "$ROOT"/system/bin/logd \
@@ -53,85 +59,74 @@ rm -f \
   "$ROOT"/system/bin/exfat-fuse \
   "$ROOT"/system/bin/mkexfatfs \
   "$ROOT"/system/bin/fsckexfat \
-  "$ROOT"/system/bin/memeater \
-  "$ROOT"/system/bin/charger \
-  "$ROOT"/system/bin/keystore_cli_v2 \
-  "$ROOT"/system/bin/avbctl \
-  "$ROOT"/system/bin/awk \
-  "$ROOT"/system/bin/bc \
-  "$ROOT"/system/bin/e2fsdroid \
-  "$ROOT"/system/bin/sgdisk \
-  "$ROOT"/system/bin/simg2img \
-  "$ROOT"/system/bin/ozip_decrypt \
-  "$ROOT"/system/bin/bu \
-  "$ROOT"/system/bin/linker_asan64 \
-  "$ROOT"/system/bin/linker_hwasan64
+  "$ROOT"/system/bin/ttyd \
+  "$ROOT"/system/bin/microhttpd \
+  "$ROOT"/system/bin/update_verifier \
+  "$ROOT"/system/bin/fastbootd \
+  "$ROOT"/system/bin/minadbd
 
+# BootControl for update_engine: ensure DT overlays win over bootable/recovery defaults.
+mkdir -p "$ROOT/system/etc/init" "$ROOT/system/etc/vintf/manifest"
+if [[ -f "$DT_ROOT/system/etc/recovery.fstab.default" ]]; then
+  cp -f "$DT_ROOT/system/etc/recovery.fstab.default" "$ROOT/system/etc/recovery.fstab.default"
+fi
+if [[ -f "$DT_ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml" ]]; then
+  cp -f "$DT_ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml" \
+    "$ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml"
+fi
+# bootable/recovery installs a oneshot boot-hal rc later in the build; force
+# non-oneshot so the HAL stays up for zip install after decrypt.
+if [[ -f "$DT_ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; then
+  cp -f "$DT_ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" \
+    "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc"
+elif [[ -f "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; then
+  sed -i '/^[[:space:]]*oneshot[[:space:]]*$/d' \
+    "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc"
+fi
+
+# Keep libperfetto_c.so — A16 servicemanager links it; without it Decrypt_Data
+# hangs forever on the splash (servicemanager crash-loop).
 rm -f \
   "$ROOT"/system/lib64/libclang_rt.ubsan_standalone-aarch64-android.so
 
-# A14 adbd is self-contained; these extras are pulled into recovery but unused.
-rm -f \
-  "$ROOT"/system/lib64/libadbd_services.so \
-  "$ROOT"/system/lib64/libadbconnection_server.so \
-  "$ROOT"/system/lib64/libadb_protos.so \
-  "$ROOT"/system/lib64/libapp_processes_protos_lite.so \
-  "$ROOT"/system/lib64/libadbd.so \
-  "$ROOT"/system/lib64/libadb_tls_connection.so \
-  "$ROOT"/system/lib64/libadb_crypto.so \
-  "$ROOT"/system/lib64/libadb_sysdeps.so \
-  "$ROOT"/system/lib64/libmdnssd.so \
-  "$ROOT"/system/lib64/libcutils_sockets.so \
-  "$ROOT"/system/lib64/libsoftkeymasterdevice.so \
-  "$ROOT"/system/lib64/libservices.so \
-  "$ROOT"/system/lib64/libnetd_client.so \
-  "$ROOT"/system/lib64/libutilscallstack.so \
-  "$ROOT"/system/lib64/libgatekeeper.so \
-  "$ROOT"/system/lib64/libext2_profile.so \
-  "$ROOT"/system/lib64/libandroid_runtime_lazy.so \
-  "$ROOT"/system/lib64/libnos_transport.so \
-  "$ROOT"/system/lib64/libnos_datagram.so \
-  "$ROOT"/system/lib64/libhidltransport.so \
-  "$ROOT"/system/lib64/android.system.suspend@1.0.so \
-  "$ROOT"/system/lib64/android.system.wifi.keystore@1.0.so \
-  "$ROOT"/system/lib64/android.hidl.token@1.0.so \
-  "$ROOT"/system/lib64/android.frameworks.stats-V1-ndk.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator@1.0.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator@1.1.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator@1.2.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator-V1-cpp.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator-V1-ndk.so \
-  "$ROOT"/system/lib64/android.hardware.vibrator-V2-cpp.so
+rm -f "$ROOT"/system/etc/init/ttyd.rc \
+  "$ROOT"/system/etc/init/microhttpd.rc \
+  "$ROOT"/system/etc/microhttpd_webui/index.html
+rm -rf "$ROOT"/system/etc/microhttpd_webui
 
 find "$ROOT/system" -name 'me.twrp.twrpapp.apk' -delete
 rm -f "$ROOT/system/etc/permissions/privapp-permissions-twrpapp.xml"
-rm -f "$ROOT"/system/bin/privapp-permissions-twrpapp.xml
 
-if [[ -d "$DT_ROOT/vendor/lib/modules" ]]; then
-  rm -rf "$ROOT/vendor/lib/modules"
-  mkdir -p "$ROOT/vendor/lib"
-  cp -a "$DT_ROOT/vendor/lib/modules" "$ROOT/vendor/lib/"
-fi
+# Modules already live in stock vendor_boot at /lib/modules (same set). Shipping
+# another copy (+ leftover modules.bak dirs) blows past Motokernel initramfs limits.
+rm -rf "$ROOT/vendor/lib/modules" "$ROOT/vendor/lib/modules.bak"
+mkdir -p "$ROOT/vendor/lib"
+
 if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   rm -rf "$ROOT/vendor/firmware"
   cp -a "$DT_ROOT/vendor/firmware" "$ROOT/vendor/"
 fi
 
-# Extra strip pass (build already strips most targets; cheap remaining gains).
+# Strip ELF to cut unpacked size (lz4 ratio already high on unstripped).
 STRIP_BIN=""
-if [[ -n "${ANDROID_BUILD_TOP:-}" ]]; then
-  STRIP_BIN="$(ls "${ANDROID_BUILD_TOP}"/prebuilts/clang/host/linux-x86/clang-*/bin/llvm-strip 2>/dev/null | tail -1 || true)"
-fi
-if [[ -z "$STRIP_BIN" && -n "${OUT:-}" ]]; then
-  _top="$(cd "${OUT}/../../.." && pwd)"
-  STRIP_BIN="$(ls "${_top}"/prebuilts/clang/host/linux-x86/clang-*/bin/llvm-strip 2>/dev/null | tail -1 || true)"
-fi
-if [[ -z "$STRIP_BIN" ]]; then
-  STRIP_BIN="$(command -v llvm-strip 2>/dev/null || true)"
-fi
+for c in \
+  "${ANDROID_HOST_OUT:-}/bin/llvm-strip" \
+  "${ANDROID_BUILD_TOP:-}/out/host/linux-x86/bin/llvm-strip" \
+  /home/luojuly/android/twrp-16.0/out/host/linux-x86/bin/llvm-strip \
+  llvm-strip strip
+do
+  if [[ -x "$c" ]] || command -v "$c" >/dev/null 2>&1; then
+    STRIP_BIN=$(command -v "$c" 2>/dev/null || echo "$c")
+    [[ -x "$STRIP_BIN" || -x "$c" ]] || continue
+    [[ -x "$c" ]] && STRIP_BIN="$c"
+    break
+  fi
+done
 if [[ -n "$STRIP_BIN" && -x "$STRIP_BIN" ]]; then
-  find "$ROOT" -type f ! -type l -size +1k -print0 \
-    | xargs -0 -r -n 40 "$STRIP_BIN" --strip-all 2>/dev/null || true
+  echo "xpeng slim-ramdisk: stripping with $STRIP_BIN"
+  while IFS= read -r -d '' f; do
+    "$STRIP_BIN" --strip-unneeded "$f" 2>/dev/null || true
+  done < <(find "$ROOT" \( -type f -name '*.so' -o -type f -path '*/bin/*' -o -type f -path '*/sbin/*' \) -print0 2>/dev/null)
 fi
 
 echo "xpeng slim-ramdisk: $(du -sh "$ROOT" | awk '{print $1}')"
