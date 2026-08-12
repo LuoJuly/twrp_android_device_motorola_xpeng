@@ -44,7 +44,7 @@ Build (JDK 17 recommended for Android 14):
 ```bash
 . build/envsetup.sh
 export ALLOW_MISSING_DEPENDENCIES=true
-lunch twrp_xpeng-eng
+lunch twrp_xpeng-ap2a-eng
 mka bootimage
 ```
 
