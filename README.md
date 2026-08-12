@@ -1,29 +1,29 @@
 # TWRP for Motorola xpeng — LineageOS 23.2 / Android 16
 
-设备：moto g200 5G / Edge S30（`xpeng`）  
-目标：在 **LineageOS 23.2（Android 16 QPR2）** 上构建 TWRP（`twrp-16.0`）。
+Device: moto g200 5G / Edge S30 (`xpeng`)  
+Goal: build TWRP (`twrp-16.0`) for **LineageOS 23.2 (Android 16 QPR2)**.
 
-从 A12（`twrp-12.1`）设备树移植，按社区 Android 16 做法适配：
+Ported from the A12 (`twrp-12.1`) device tree and adapted for community Android 16 practice:
 
-- 构建树：`TWRP-Test/platform_manifest_twrp_aosp` → `twrp-16.0`
-- lunch：`twrp_xpeng-bp2a-eng`
-- 解密：lahaina + **Keymaster 4.1**（QCOM FBE，不是新机 KeyMint/Weaver 路线）
-- 内核/模块/密钥栈 blob：官方 LineageOS 23.2 nightly
+- Build tree: `TWRP-Test/platform_manifest_twrp_aosp` → `twrp-16.0`
+- Lunch: `twrp_xpeng-bp2a-eng`
+- Decrypt: lahaina + **Keymaster 4.1** (QCOM FBE — not KeyMint/Weaver)
+- Kernel / modules / keystack blobs: official LineageOS 23.2 nightly
 
-## 资源来源
+## Sources
 
-| 组件 | 来源 |
-|------|------|
-| `prebuilt/kernel` | LOS `boot.img`（`5.4.302-moto-g057847a8c116`） |
-| recovery 模块 | LOS `vendor_boot` → `lib/modules`（vermagic 已对齐） |
+| Component | Source |
+|-----------|--------|
+| `prebuilt/kernel` | LOS `boot.img` (`5.4.302-moto-g057847a8c116`) |
+| Recovery modules | LOS `vendor_boot` → `lib/modules` (vermagic matched) |
 | qseecomd / keymaster 4.1 / gatekeeper | LOS `vendor` |
-| system 依赖库（libion 等） | LOS `system` |
-| 分区 / 加密 flags | [LineageOS xpeng lineage-23.2](https://github.com/LineageOS/android_device_motorola_xpeng/tree/lineage-23.2) |
+| System libs (libion, etc.) | LOS `system` |
+| Partition / crypto flags | [LineageOS xpeng lineage-23.2](https://github.com/LineageOS/android_device_motorola_xpeng/tree/lineage-23.2) |
 
-参考包：`lineage-23.2-20260808-nightly-xpeng`  
-镜像：https://download.lineageos.org/devices/xpeng/builds
+Reference build: `lineage-23.2-20260808-nightly-xpeng`  
+Mirrors: https://download.lineageos.org/devices/xpeng/builds
 
-## 编译
+## Build
 
 ```bash
 mkdir -p ~/android/twrp-16.0 && cd ~/android/twrp-16.0
@@ -31,9 +31,10 @@ repo init --depth=1 -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.
 repo sync -c -j$(nproc)
 
 mkdir -p device/motorola
-ln -sfn /path/to/twrp_android_device_motorola_xpeng_lineage device/motorola/xpeng
+# Soong cannot follow a symlink — copy/rsync this tree (do not ln -s)
+rsync -a /path/to/twrp_android_device_motorola_xpeng/ device/motorola/xpeng/
 
-# 可选：应用 UI/MTP/haptics 等补丁（若与当前 twrp-16.0 对得上）
+# Optional: UI / MTP / haptics patches (if they still apply cleanly)
 device/motorola/xpeng/scripts/apply-patches.sh "$PWD"
 
 . build/envsetup.sh
@@ -42,74 +43,73 @@ lunch twrp_xpeng-bp2a-eng
 mka bootimage
 ```
 
-产物：`out/target/product/xpeng/boot.img`（recovery-as-boot）
+Output: `out/target/product/xpeng/boot.img` (recovery-as-boot)
 
-> **Motorola 注意：** 不要用裸的 `fastboot boot boot.img`（即便加 `--cmdline`）。bootloader 仍会带 `force_normal_boot=1` 且常忽略 host cmdline，first_stage 会 SwitchRoot 进系统 → **黑屏后进系统**。
+## Enter TWRP
 
-**推荐进入 TWRP：**
+**Recommended (temporary, no permanent flash):**
 
 ```bash
-device/motorola/xpeng/scripts/enter-twrp.sh recovery
-# 等价于：
-# fastboot flash boot out/target/product/xpeng/boot.img
-# fastboot reboot recovery
+device/motorola/xpeng/scripts/enter-twrp.sh boot
+# equivalent:
+# fastboot boot out/target/product/xpeng/boot.img
 ```
 
-**若坚持临时 boot**（需改 vendor_boot cmdline 注入 `twrpfastboot=1`，测完务必还原）：
+Plain `fastboot boot` works: first-stage `ForceNormalBoot()` returns false when `/twres` is present in the TWRP ramdisk, so bootloader `force_normal_boot=1` no longer drops into Android.
+
+Do **not** `fastboot flash boot` for daily dual-use until Android can boot from the same TWRP boot image. If you previously patched `vendor_boot`, restore with:
 
 ```bash
-device/motorola/xpeng/scripts/enter-twrp.sh fastboot-boot
-# 测完：
 device/motorola/xpeng/scripts/enter-twrp.sh restore-vendor_boot
 ```
 
-## 设计要点（相对 A12）
+## Design notes (vs A12)
 
-1. **构建**：`bp2a` lunch + `twrp_` 前缀（社区 A16 标准）
-2. **分区**：LOS 23.2 `super=8589934592`，logical 为 ext4
-3. **加密**：`wrappedkey_v0` + metadata；`PLATFORM_VERSION=99.87.36` + `prepdecrypt.setpatch`（沿用 A12 已验证路径）
-4. **不引入** SM8850/KeyMint/Weaver 大补丁（本机仍是 Keymaster 4.1）
-5. **触摸/电池**：`runatboot` + `init_thermal` + LOS 匹配模块
+1. **Build**: `bp2a` lunch + `twrp_` product prefix (community A16)
+2. **Partitions**: LOS 23.2 `super=8589934592`; logical partitions are ext4
+3. **Crypto**: `wrappedkey_v0` + metadata FBE; keep patch dates at `2099-12-31` (`prepdecrypt.setpatch=false`) so decrypt matches Keymaster
+4. **No** SM8850 / KeyMint / Weaver trees — this device stays on Keymaster 4.1
+5. **Touch / thermal**: `runatboot` + `init_thermal` + LOS-matched modules
+6. **A/B zip install**: keep `update_engine_sideload` and a working HIDL `boot-hal-1-2` (impl under `/vendor/lib64/hw`, Android-format `/misc` fstab, VINTF declaration)
 
-## 刷新 blob
+## Refresh blobs
 
 ```bash
-# 从 download.lineageos.org 下载同日 boot / vendor_boot / dtbo 后：
+# After downloading matching boot / vendor_boot / dtbo from download.lineageos.org:
 ./scripts/refresh-lineage-blobs.sh --boot boot.img --vendor-boot vendor_boot.img --dtbo dtbo.img
 ```
 
-vendor 内 keymaster 等若大改，需再从 `vendor.img` 用 `debugfs` 抽出覆盖 `recovery/root`。
+If vendor keymaster stacks change substantially, extract replacements from `vendor.img` (e.g. via `debugfs`) into `recovery/root`.
 
-## 目录
+## Layout
 
 ```
 BoardConfig.mk / device.mk / twrp_xpeng.mk
 recovery.fstab / system.prop
 prebuilt/{kernel,dtb,dtbo.img}
-recovery/root/          # init、脚本、模块、解密/振动二进制
-patches/                # bootable/recovery 可选补丁
+recovery/root/          # init, scripts, modules, decrypt/vibrator bins
+patches/                # optional bootable/recovery patches
 scripts/apply-patches.sh
+scripts/enter-twrp.sh
 scripts/refresh-lineage-blobs.sh
 ```
 
 ## Build workarounds
 
-Soong **cannot follow a symlink** for `device/motorola/xpeng` — rsync/copy the tree into the build workspace instead of `ln -s`.
+Soong **cannot follow a symlink** for `device/motorola/xpeng` — rsync/copy the tree into the build workspace.
 
 Device-tree flags (already in this repo):
 
 | Flag / file | Why |
 |-------------|-----|
-| `PRODUCT_CHECK_PREBUILT_MAX_PAGE_SIZE := false` (`device.mk`) | Prebuilt recovery bins (e.g. magiskboot) may be 4K-aligned; A16 build checks reject them otherwise |
-| `PRODUCT_ENABLE_UFFD_GC := false` + `OVERRIDE_ENABLE_UFFD_GC := false` (`device.mk` / `twrp_xpeng.mk` / `BoardConfig.mk`) | Motokernel 5.4 has no UFFD GC; leave ART UFFD GC off |
+| `PRODUCT_CHECK_PREBUILT_MAX_PAGE_SIZE := false` (`device.mk`) | Prebuilt recovery bins may be 4K-aligned; A16 checks reject them otherwise |
+| `PRODUCT_ENABLE_UFFD_GC := false` + `OVERRIDE_ENABLE_UFFD_GC := false` | Moto kernel 5.4 has no UFFD GC; leave ART UFFD GC off |
 
-TWRP **source** edits that lived only under `twrp-16.0` for the successful build (not saved as extra `patches/` unless noted):
+TWRP **source** edits used for a successful build (re-apply after a clean `repo sync` of `bootable/recovery`):
 
 | Location | What / why |
 |----------|------------|
-| `bootable/recovery/openaes/src/isaac/rand.{c,h}` + `oaes_lib.c` | ANSI C prototypes + rename `rand()` macro → `isaac_rand` so OpenAES builds under C23/clang (Android 16) |
-| `bootable/recovery/prebuilt/Android.mk` | `task_profiles.json` copy fallback + `LOCAL_REQUIRED_MODULES += task_profiles.json` when `TARGET_OUT_ETC` copy is missing |
-| `patches/0001`–`0002` (via `scripts/apply-patches.sh`) | Keep fstab Mount display names; quiet animation end-frame — applied in the successful build tree |
-| `patches/0003`–`0004` | AIDL haptics / default MTP off — optional; may need refresh against current `bootable/recovery` |
-
-Re-apply recovery-tree fixes after a clean `repo sync` of `bootable/recovery` before rebuilding.
+| `bootable/recovery/openaes/src/isaac/rand.{c,h}` + `oaes_lib.c` | ANSI prototypes + rename `rand()` → `isaac_rand` for C23/clang on Android 16 |
+| `bootable/recovery/prebuilt/Android.mk` | `task_profiles.json` copy fallback when `TARGET_OUT_ETC` copy is missing |
+| `patches/0001`–`0002` (via `scripts/apply-patches.sh`) | Keep fstab Mount display names; quiet animation end-frame |
+| `patches/0003`–`0004` | AIDL haptics / default MTP off — optional; may need refresh |
