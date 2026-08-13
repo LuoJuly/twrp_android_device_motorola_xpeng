@@ -2,6 +2,10 @@ ro.recovery.usb.vid=18D1
 ro.recovery.usb.adb.pid=D001
 ro.recovery.usb.fastboot.pid=4EE0
 
+# Virtual A/B (stock xpeng). Recovery may not pick up PRODUCT_VENDOR_PROPERTIES.
+# Without this, update_engine_sideload treats super as classic A/B.
+ro.virtual_ab.enabled=true
+
 # FBE / dm-default-key (match stock Android 12)
 ro.crypto.dm_default_key.options_format.version=2
 ro.crypto.volume.metadata.method=dm-default-key

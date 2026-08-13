@@ -9,6 +9,11 @@ LOCAL_PATH := device/motorola/xpeng
 
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 
+# Virtual A/B — stock xpeng super is virtual_ab_device (one slot + COW).
+# Without this, update_engine_sideload treats super as classic A/B and
+# rejects full-slot groups (~8GB > super/2).
+$(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota.mk)
+
 # A/B
 AB_OTA_POSTINSTALL_CONFIG += \
     RUN_POSTINSTALL_system=true \

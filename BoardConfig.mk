@@ -78,21 +78,23 @@ BOARD_RECOVERY_IMAGE_PREPARE := $(DEVICE_PATH)/recovery/slim-ramdisk.sh
 BOARD_BOOTIMAGE_PARTITION_SIZE := 100663296
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 100663296
 BOARD_HAS_LARGE_FILESYSTEM := true
-# Build-time types: match tundra (erofs). Runtime mount still uses dual fstab.
-BOARD_SYSTEMIMAGE_PARTITION_TYPE := erofs
-BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
-BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+# Build-time types: match stock xpeng (ext4). Runtime fstab still lists ext4+erofs.
+BOARD_SYSTEMIMAGE_PARTITION_TYPE := ext4
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 TARGET_COPY_OUT_VENDOR := vendor
 TARGET_COPY_OUT_PRODUCT := product
 TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-BOARD_SUPER_PARTITION_SIZE := 9126805504 # TODO: Fix hardcoded value
-BOARD_SUPER_PARTITION_GROUPS := motorola_dynamic_partitions
+# Match stock xpeng super (8 GiB) and mot_dp_group naming so
+# update_engine_sideload can prepare Virtual A/B metadata for official OTAs.
+BOARD_SUPER_PARTITION_SIZE := 8589934592
+BOARD_SUPER_PARTITION_GROUPS := mot_dp_group
+BOARD_MOT_DP_GROUP_SIZE := 8585740288 # SUPER - 4MiB
 # No odm: this ROM has no odm mapper (matches recovery.fstab).
-BOARD_MOTOROLA_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext product vendor
-BOARD_MOTOROLA_DYNAMIC_PARTITIONS_SIZE := 9122611200 # TODO: Fix hardcoded value
+BOARD_MOT_DP_GROUP_PARTITION_LIST := system system_ext product vendor
 
 # Platform
 TARGET_BOARD_PLATFORM := lahaina
