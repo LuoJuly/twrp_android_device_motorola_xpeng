@@ -7,6 +7,12 @@
 
 LOCAL_PATH := device/motorola/xpeng
 
+# Export this device Soong namespace so PRODUCT_PACKAGES can see
+# android.hardware.boot@1.2-impl-qti (device Android.bp is namespaced).
+PRODUCT_SOONG_NAMESPACES += \
+    device/motorola/xpeng \
+    device/qcom/common/gpt-utils
+
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 
 # Virtual A/B — stock xpeng super is virtual_ab_device (one slot + COW).
@@ -21,13 +27,13 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_system=ext4 \
     POSTINSTALL_OPTIONAL_system=true
 
-# Boot control HAL — recovery must ship the passthrough impl.
-# Decrypt_Data → MetadataCrypt → cp_needsCheckpoint() → IBootControl::getService()
-# waits forever if boot-hal cannot load android.hardware.boot@1.0-impl-1.2.so
-# (symptoms: stuck on TWRP splash, logspam "Waited one second for IBootControl").
+# Boot control HAL — recovery must ship a passthrough impl (decrypt checkpoint
+# waits on IBootControl). Use QTI with Motorola dual-LUN GPT (sdd=_a, sdf=_b)
+# plus UFS boot LUN; AOSP impl only writes /misc, which Motorola ABL ignores.
+# Same .so stem as AOSP so 1.2-service loads it.
 PRODUCT_PACKAGES += \
-    android.hardware.boot@1.2-impl \
-    android.hardware.boot@1.2-impl.recovery \
+    android.hardware.boot@1.2-impl-qti \
+    android.hardware.boot@1.2-impl-qti.recovery \
     android.hardware.boot@1.2-service
 
 PRODUCT_PACKAGES += \

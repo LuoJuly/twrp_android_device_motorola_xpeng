@@ -86,4 +86,24 @@ if [[ -f "$UE" && -f "$WRAP" ]]; then
   echo "xpeng slim-ramdisk: installed update_engine_sideload SPL wrapper"
 fi
 
+# QTI bootctrl writes GPT type GUIDs + UFS boot LUN. AOSP impl only writes
+# /misc, which Motorola ABL ignores. HIDL passthrough loads
+# android.hardware.boot@1.0-impl-1.2.so — install the QTI .so under that name.
+QTI_SO="android.hardware.boot@1.0-impl-1.2-qti.so"
+AOSP_SO="android.hardware.boot@1.0-impl-1.2.so"
+qti_src=""
+for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
+  if [[ -f "$dir/$QTI_SO" ]]; then
+    qti_src="$dir/$QTI_SO"
+    break
+  fi
+done
+if [[ -n "$qti_src" ]]; then
+  for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
+    mkdir -p "$dir"
+    cp -f "$qti_src" "$dir/$AOSP_SO"
+  done
+  echo "xpeng slim-ramdisk: installed QTI bootctrl as $AOSP_SO"
+fi
+
 echo "xpeng slim-ramdisk: $(du -sh "$ROOT" | awk '{print $1}')"

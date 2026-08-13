@@ -6,4 +6,60 @@
 //
 
 soong_namespace {
+    imports: [
+        "device/qcom/common/gpt-utils",
+    ],
+}
+
+// QTI gpt-utils: swap GPT type GUIDs and UFS boot LUN (QUERY_ATTR BOOT_LU_EN).
+// AOSP libboot_control only writes /misc, which Motorola ABL ignores.
+cc_library {
+    name: "libgptutils.xpeng",
+    vendor: true,
+    recovery_available: true,
+    defaults: ["libgptutils_defaults"],
+}
+
+// Motorola UFS A/B keeps *_a and *_b on separate LUNs. Build the 1.2 HIDL
+// impl from device-tree sources (diskA/diskB) instead of CAF defaults, which
+// assume both slots share one GPT.
+// Unique stem so we do not collide with AOSP android.hardware.boot@1.2-impl.
+// slim-ramdisk.sh copies this to android.hardware.boot@1.0-impl-1.2.so for
+// android.hardware.boot@1.2-service passthrough.
+cc_library_shared {
+    name: "android.hardware.boot@1.2-impl-qti",
+    stem: "android.hardware.boot@1.0-impl-1.2-qti",
+    defaults: ["hidl_defaults"],
+    relative_install_path: "hw",
+    vendor: true,
+    recovery_available: true,
+    srcs: [
+        "bootctrl/libboot_control_qti.cpp",
+        "bootctrl/BootControl.cpp",
+    ],
+    local_include_dirs: ["bootctrl"],
+    shared_libs: [
+        "liblog",
+        "libhidlbase",
+        "libhardware",
+        "libutils",
+        "libbase",
+        "libcutils",
+        "libz",
+        "android.hardware.boot@1.0",
+        "android.hardware.boot@1.1",
+        "android.hardware.boot@1.2",
+    ],
+    static_libs: [
+        "libgptutils.xpeng",
+        "libboot_control",
+        "libbootloader_message_vendor",
+        "libfstab",
+    ],
+    header_libs: ["libgptutils_headers"],
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-include device/motorola/xpeng/bootctrl/xpeng_gpt_compat.h",
+    ],
 }
