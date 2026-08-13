@@ -70,4 +70,20 @@ if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   cp -a "$DT_ROOT/vendor/firmware" "$ROOT/vendor/"
 fi
 
+# Wrap update_engine_sideload so forged 2099 SPL (Keymaster decrypt) does not
+# look like an OTA security-patch downgrade → BCB --wipe_data / powerwash.
+# Same approach as android-16.0: prefer on-device system/vendor SPL.
+UE="$ROOT/system/bin/update_engine_sideload"
+WRAP="$DT_ROOT/system/bin/update_engine_sideload.wrap"
+if [[ -f "$UE" && -f "$WRAP" ]]; then
+  if [[ ! -f "$ROOT/system/bin/update_engine_sideload.real" ]]; then
+    mv "$UE" "$ROOT/system/bin/update_engine_sideload.real"
+  else
+    rm -f "$UE"
+  fi
+  cp -f "$WRAP" "$UE"
+  chmod 0755 "$UE" "$ROOT/system/bin/update_engine_sideload.real"
+  echo "xpeng slim-ramdisk: installed update_engine_sideload SPL wrapper"
+fi
+
 echo "xpeng slim-ramdisk: $(du -sh "$ROOT" | awk '{print $1}')"

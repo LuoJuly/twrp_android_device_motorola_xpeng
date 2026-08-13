@@ -50,6 +50,11 @@ mka bootimage
 
 Output: `out/target/product/xpeng/boot.img` (recovery-as-boot).
 
+Notes:
+
+- Decrypt keeps `PLATFORM_SECURITY_PATCH` / `VENDOR_SECURITY_PATCH` at `2099-12-31`.
+- A/B zip sideload wraps `update_engine_sideload` so that forged `2099` SPL does not look like a security-patch downgrade (avoids BCB `--wipe_data` / powerwash). The wrapper prefers the on-device system/vendor SPL and falls back to `1970-01-01`.
+
 Temporary boot (recommended first):
 
 ```bash
