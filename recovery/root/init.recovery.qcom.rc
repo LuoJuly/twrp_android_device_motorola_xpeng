@@ -25,9 +25,11 @@ on init
     write /tmp/twrp_battery/status Discharging
     # LineageOS: enable configfs USB; leave gadget creation to init.rc on fs
     setprop sys.usb.configfs 1
-    # Decrypt bring-up logging + force patchlevel sync from system/vendor
+    # Decrypt bring-up logging. Do NOT sync live OS/vendor security patches —
+    # TWRP keeps 2099-12-31 so Keymaster upgrades wrapped FBE keys. setpatch
+    # true was overwriting that and is unsafe for wrappedkey_v0 metadata decrypt.
     setprop prepdecrypt.loglevel 2
-    setprop prepdecrypt.setpatch true
+    setprop prepdecrypt.setpatch false
 
 # Dual-role (otg): peripheral for ADB when PC-attached, host when OTG adapter
 # is used. Forced "peripheral" (Lineage default) blocks USB host / U-disk mount.
