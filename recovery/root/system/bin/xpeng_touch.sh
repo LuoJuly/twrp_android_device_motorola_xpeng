@@ -2,17 +2,25 @@
 #
 # Load recovery modules + boot ADSP so battery SOC works.
 # Module list matches LineageOS 23.2 modules.load.recovery / vendor_boot.
+# Prefer boot-ramdisk /vendor/lib/modules (no msm_drm); fall back to /lib/modules.
 #
 
-module_path=/sbin/modules
+module_path=/vendor/lib/modules
+[ -d "$module_path" ] || module_path=/lib/modules
+[ -d "$module_path" ] || module_path=/sbin/modules
 firmware_path=/sbin/firmware
 touch_class_path=/sys/class/touchscreen
 
 load() {
-	# Prefer normal insmod; -f as fallback for vermagic skew
-	insmod "$module_path/$1" 2>/dev/null \
-		|| insmod -f "$module_path/$1" 2>/dev/null \
-		|| true
+	# Search vendor ramdisk first, then vendor_boot /lib/modules (msm_drm).
+	for p in /vendor/lib/modules /lib/modules /sbin/modules; do
+		[ -f "$p/$1" ] || continue
+		insmod "$p/$1" 2>/dev/null \
+			|| insmod -f "$p/$1" 2>/dev/null \
+			|| true
+		return 0
+	done
+	return 0
 }
 
 # --- misc fs ---

@@ -1,0 +1,25 @@
+# Aliases extracted from modules themselves.
+alias platform:mmi_relay mmi_relay
+alias of:N*T*Cmmi,sys-relay mmi_relay
+alias of:N*T*Cmmi,sys-relayC* mmi_relay
+alias of:N*T*Cqcom,msm-audio-apr apr_dlkm
+alias of:N*T*Cqcom,msm-audio-aprC* apr_dlkm
+alias of:N*T*Cqcom,mdp4 msm_drm
+alias of:N*T*Cqcom,mdp4C* msm_drm
+alias of:N*T*Cqcom,mdss msm_drm
+alias of:N*T*Cqcom,mdssC* msm_drm
+alias of:N*T*Cqcom,sde-kms msm_drm
+alias of:N*T*Cqcom,sde-kmsC* msm_drm
+alias of:N*T*Cqcom,smmu_sde_unsec msm_drm
+alias of:N*T*Cqcom,smmu_sde_unsecC* msm_drm
+alias of:N*T*Cqcom,smmu_sde_sec msm_drm
+alias of:N*T*Cqcom,smmu_sde_secC* msm_drm
+alias of:N*T*Cqcom,smmu_sde_nrt_unsec msm_drm
+alias of:N*T*Cqcom,smmu_sde_nrt_unsecC* msm_drm
+alias of:N*T*Cqcom,smmu_sde_nrt_sec msm_drm
+alias of:N*T*Cqcom,smmu_sde_nrt_secC* msm_drm
+alias of:N*T*Cqcom,msm-hdcp msm_drm
+alias of:N*T*Cqcom,msm-hdcpC* msm_drm
+alias of:N*T*Cqcom,adsp-loader adsp_loader_dlkm
+alias of:N*T*Cqcom,adsp-loaderC* adsp_loader_dlkm
+alias fs-exfat exfat

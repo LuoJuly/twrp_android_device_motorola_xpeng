@@ -18,8 +18,8 @@ if [ -f /tmp/init_thermal.lock ]; then
 fi
 echo $$ > /tmp/init_thermal.lock
 
-MODULE_PATH=/lib/modules
-[ -d "$MODULE_PATH" ] || MODULE_PATH=/vendor/lib/modules
+MODULE_PATH=/vendor/lib/modules
+[ -d "$MODULE_PATH" ] || MODULE_PATH=/lib/modules
 [ -d "$MODULE_PATH" ] || MODULE_PATH=/sbin/modules
 TEMP_FILE=/tmp/twrp_cpu_temp
 BATT_DIR=/tmp/twrp_battery

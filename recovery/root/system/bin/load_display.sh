@@ -2,16 +2,17 @@
 #
 # Load display stack as early as possible (before TWRP GUI).
 # msm_drm is modular on lahaina; without it recovery has no /dev/dri → black screen.
-# Prefer vendor_boot /lib/modules (not duplicated into boot ramdisk).
+# msm_drm.ko stays on vendor_boot (/lib/modules, ~3.9MiB); other kos ship in
+# boot ramdisk under /vendor/lib/modules.
 #
 
-for MOD in /lib/modules /vendor/lib/modules /sbin/modules; do
-	[ -d "$MOD" ] && break
-done
-
 load() {
-	[ -f "$MOD/$1" ] || return 0
-	insmod "$MOD/$1" 2>/dev/null || insmod -f "$MOD/$1" 2>/dev/null || true
+	for MOD in /vendor/lib/modules /lib/modules /sbin/modules; do
+		[ -f "$MOD/$1" ] || continue
+		insmod "$MOD/$1" 2>/dev/null || insmod -f "$MOD/$1" 2>/dev/null || true
+		return 0
+	done
+	return 0
 }
 
 load mmi_annotate.ko

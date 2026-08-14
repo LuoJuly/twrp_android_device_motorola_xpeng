@@ -150,10 +150,21 @@ rm -rf "$ROOT"/system/etc/microhttpd_webui
 find "$ROOT/system" -name 'me.twrp.twrpapp.apk' -delete
 rm -f "$ROOT/system/etc/permissions/privapp-permissions-twrpapp.xml"
 
-# Modules already live in stock vendor_boot at /lib/modules (same set). Shipping
-# another copy (+ leftover modules.bak dirs) blows past Motokernel initramfs limits.
-rm -rf "$ROOT/vendor/lib/modules" "$ROOT/vendor/lib/modules.bak"
+# Keep recovery modules except msm_drm.ko (~3.9MiB) — that stays on vendor_boot
+# /lib/modules. Rest (~1.2MiB) matches vendor_boot 17-module list minus msm_drm
+# (no mmi_sys_temp/utags; those are A12-only extras).
+rm -rf "$ROOT/vendor/lib/modules.bak"
 mkdir -p "$ROOT/vendor/lib"
+if [[ -d "$DT_ROOT/vendor/lib/modules" ]]; then
+  rm -rf "$ROOT/vendor/lib/modules"
+  cp -a "$DT_ROOT/vendor/lib/modules" "$ROOT/vendor/lib/"
+fi
+# Always drop msm_drm from boot ramdisk if a copy slipped in.
+rm -f "$ROOT/vendor/lib/modules/msm_drm.ko"
+# Prefer DT modules; do not leave empty modules dir missing for init_thermal.
+if [[ ! -d "$ROOT/vendor/lib/modules" ]]; then
+  mkdir -p "$ROOT/vendor/lib/modules"
+fi
 
 if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   rm -rf "$ROOT/vendor/firmware"
