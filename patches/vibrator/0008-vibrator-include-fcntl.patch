@@ -1,0 +1,12 @@
+diff --git a/aidl/Vibrator.cpp b/aidl/Vibrator.cpp
+index 4b0d649..57bfb2a 100644
+--- a/aidl/Vibrator.cpp
++++ b/aidl/Vibrator.cpp
+@@ -31,6 +31,7 @@
+ 
+ #include <cutils/properties.h>
+ #include <dirent.h>
++#include <fcntl.h>
+ #include <inttypes.h>
+ #include <linux/input.h>
+ #include <log/log.h>
