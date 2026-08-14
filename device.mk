@@ -7,6 +7,12 @@
 
 LOCAL_PATH := device/motorola/xpeng
 
+# Export this device Soong namespace so PRODUCT_PACKAGES can see
+# android.hardware.boot@1.2-impl-qti (device Android.bp is namespaced).
+PRODUCT_SOONG_NAMESPACES += \
+    device/motorola/xpeng \
+    device/qcom/common/gpt-utils
+
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 
 # Virtual A/B — same as Lineage sm7325-common (virtual_ab_ota.mk).
@@ -20,15 +26,17 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_system=ext4 \
     POSTINSTALL_OPTIONAL_system=true
 
-# Boot control HAL — recovery must ship the passthrough impl.
-# Decrypt_Data → MetadataCrypt → cp_needsCheckpoint() → IBootControl::getService()
+# Boot control HAL — QTI dual-LUN GPT (sdd=_a, sdf=_b) + UFS boot LUN.
+# AOSP impl only writes /misc, which Motorola ABL ignores → TWRP slot switch
+# appears to work but does not change the real active slot.
 PRODUCT_PACKAGES += \
-    android.hardware.boot@1.2-impl \
-    android.hardware.boot@1.2-impl.recovery \
+    android.hardware.boot@1.2-impl-qti \
+    android.hardware.boot@1.2-impl-qti.recovery \
     android.hardware.boot@1.2-service
 
-# update_engine_sideload ~3MB — omit to keep initramfs under Motokernel limit.
-# Zip install still works via TWRP's own installer.
+# Keep update_engine_sideload (A/B zip). Omit update_verifier / fastbootd (ramdisk).
+PRODUCT_PACKAGES += \
+    update_engine_sideload
 
 # QCOM FBE decryption (device/qcom/twrp-common)
 PRODUCT_PACKAGES += \

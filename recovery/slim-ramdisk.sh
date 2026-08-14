@@ -50,8 +50,8 @@ rm -f \
 
 # Keep orscmd (installs as system/bin/twrp) and zip (same as main).
 # Keep update_engine_sideload — A/B Lineage signed zips require it to flash the
-# inactive slot (TWRP execs /system/bin/update_engine_sideload). update_verifier
-# is not needed for sideload and can stay deleted for ramdisk size.
+# inactive slot (TWRP execs /system/bin/update_engine_sideload).
+# Drop update_verifier + fastbootd for Motokernel ramdisk budget.
 # Keep minadbd — TWRP ADB Sideload UI forks /system/bin/minadbd (not adbd).
 rm -f \
   "$ROOT"/system/bin/magiskboot \
@@ -97,6 +97,44 @@ if [[ -f "$DT_ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; the
 elif [[ -f "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; then
   sed -i '/^[[:space:]]*oneshot[[:space:]]*$/d' \
     "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc"
+fi
+
+# QTI bootctrl writes GPT type GUIDs + UFS boot LUN. AOSP impl only writes
+# /misc, which Motorola ABL ignores. HIDL passthrough loads
+# android.hardware.boot@1.0-impl-1.2.so — install the QTI .so under that name.
+QTI_SO="android.hardware.boot@1.0-impl-1.2-qti.so"
+AOSP_SO="android.hardware.boot@1.0-impl-1.2.so"
+qti_src=""
+for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
+  if [[ -f "$dir/$QTI_SO" ]]; then
+    qti_src="$dir/$QTI_SO"
+    break
+  fi
+done
+# Idempotent: after a prior slim, only AOSP_SO remains (already QTI contents).
+# Use grep -a (not strings|grep -q): with pipefail, SIGPIPE from early grep exit
+# makes a successful match look like failure.
+if [[ -z "$qti_src" ]]; then
+  for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
+    if [[ -f "$dir/$AOSP_SO" ]] && grep -aq 'gpt_utils_set_xbl_boot_partition' "$dir/$AOSP_SO"; then
+      qti_src="$dir/$AOSP_SO"
+      break
+    fi
+  done
+fi
+if [[ -n "$qti_src" ]]; then
+  for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
+    mkdir -p "$dir"
+    if [[ "$qti_src" != "$dir/$AOSP_SO" ]]; then
+      cp -f "$qti_src" "$dir/$AOSP_SO"
+    fi
+  done
+  # Drop duplicate *-qti.so copies after installing under the AOSP load name.
+  rm -f "$ROOT"/vendor/lib64/hw/"$QTI_SO" \
+    "$ROOT"/system/lib64/hw/"$QTI_SO"
+  echo "xpeng slim-ramdisk: installed QTI bootctrl as $AOSP_SO (removed $QTI_SO dup)"
+else
+  echo "xpeng slim-ramdisk: WARNING missing $QTI_SO (slot switch will not work)" >&2
 fi
 
 # Keep libperfetto_c.so — A16 servicemanager links it; without it Decrypt_Data

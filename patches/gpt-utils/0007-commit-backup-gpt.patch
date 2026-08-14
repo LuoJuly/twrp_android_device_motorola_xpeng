@@ -1,0 +1,32 @@
+diff --git a/gpt-utils/gpt-utils.cpp b/gpt-utils/gpt-utils.cpp
+index 68128cb..7d8323c 100755
+--- a/gpt-utils/gpt-utils.cpp
++++ b/gpt-utils/gpt-utils.cpp
+@@ -1389,7 +1389,7 @@ int gpt_disk_get_disk_info(const char *dev, struct gpt_disk *dsk)
+         }
+         gpt_header_size = GET_4_BYTES(disk->hdr + HEADER_SIZE_OFFSET);
+         disk->hdr_crc = crc32(0, disk->hdr, gpt_header_size);
+-        disk->hdr_bak = gpt_get_header(dev, PRIMARY_GPT);
++        disk->hdr_bak = gpt_get_header(dev, SECONDARY_GPT);
+         if (!disk->hdr_bak) {
+                 ALOGE("%s: Failed to get backup header", __func__);
+                 goto error;
+@@ -1530,6 +1530,18 @@ int gpt_disk_commit(struct gpt_disk *disk)
+                                 __func__);
+                 goto error;
+         }
++        ALOGI("%s: Writing back backup partition array", __func__);
++        if (gpt_set_pentry_arr(disk->hdr_bak, fd, disk->pentry_arr_bak)) {
++                ALOGE("%s: Failed to write backup GPT partition arr",
++                                __func__);
++                goto error;
++        }
++        ALOGI("%s: Writing back backup GPT header", __func__);
++        if (gpt_set_header(disk->hdr_bak, fd, SECONDARY_GPT) != 0) {
++                ALOGE("%s: Failed to update backup GPT header",
++                                __func__);
++                goto error;
++        }
+         fsync(fd);
+         close(fd);
+         return 0;
