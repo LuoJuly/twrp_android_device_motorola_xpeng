@@ -34,6 +34,11 @@ mkdir -p device/motorola
 # Soong cannot follow a symlink — copy/rsync this tree (do not ln -s)
 rsync -a /path/to/twrp_android_device_motorola_xpeng/ device/motorola/xpeng/
 
+# Required for Motorola dual-LUN slot switch (QTI bootctrl):
+mkdir -p device/qcom/common
+# e.g. from LineageOS/android_device_qcom_common (gpt-utils/)
+# then apply: patch -d device/qcom/common -p1 < device/motorola/xpeng/patches/gpt-utils/0007-commit-backup-gpt.patch
+
 # Optional: UI / MTP / haptics patches (if they still apply cleanly)
 device/motorola/xpeng/scripts/apply-patches.sh "$PWD"
 
@@ -71,6 +76,7 @@ device/motorola/xpeng/scripts/enter-twrp.sh restore-vendor_boot
 4. **No** SM8850 / KeyMint / Weaver trees — this device stays on Keymaster 4.1
 5. **Touch / thermal**: `runatboot` + `init_thermal` + LOS-matched modules
 6. **A/B zip install**: keep `update_engine_sideload` and a working HIDL `boot-hal-1-2` (impl under `/vendor/lib64/hw`, Android-format `/misc` fstab, VINTF declaration). A thin wrapper temporarily sets `ro.build.version.security_patch` to the on-device system/vendor SPL (falls back to `1970-01-01`) during sideload so the forged `2099-12-31` decrypt date does not trigger an SPL-downgrade powerwash (`BCB --wipe_data`)
+7. **Slot switch**: use QTI dual-LUN bootctrl (`bootctrl/`, `android.hardware.boot@1.2-impl-qti`) — AOSP `/misc`-only impl is ignored by Motorola ABL. slim installs the QTI `.so` as `android.hardware.boot@1.0-impl-1.2.so` and drops the `*-qti.so` duplicate for ramdisk size
 
 ## Refresh blobs
 
