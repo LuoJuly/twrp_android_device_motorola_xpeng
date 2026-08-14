@@ -1,0 +1,33 @@
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+index 2766b4c..c26cebd 100755
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -3594,24 +3603,26 @@ bool TWPartitionManager::Prepare_Super_Volume(TWPartition* twrpPart) {
+ 
+     return true;
+ }
+ 
+ bool TWPartitionManager::Prepare_All_Super_Volumes() {
+ 	bool status = true;
+ 	std::vector<TWPartition*>::iterator iter;
+ 
+-	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
++	for (iter = Partitions.begin(); iter != Partitions.end(); ) {
+ 		if ((*iter)->Is_Super) {
+ 			if (!Prepare_Super_Volume(*iter)) {
+ 				status = false;
+-				Partitions.erase(iter--);
++				iter = Partitions.erase(iter);
++				continue;
+ 			}
+ 			PartitionManager.Output_Partition(*iter);
+ 		}
++		++iter;
+ 	}
+ 	Update_System_Details();
+ 	return status;
+ }
+ 
+ std::string TWPartitionManager::Get_Super_Partition() {
+ 	int slot_number = Get_Active_Slot_Display() == "A" ? 0 : 1;
+ 	std::string super_device = fs_mgr_get_super_partition_name(slot_number);

@@ -52,11 +52,12 @@
 #include <libboot_control/libboot_control.h>
 
 /* xpeng keeps slot A on sdd and slot B on sdf. CAF AB_PTN_LIST misses several
- * firmware images whose type GUIDs ABL actually follows. */
+ * firmware images whose type GUIDs ABL actually follows. shrm lives on the
+ * XBL LUNs (sdb/sdc); Motorola fastboot swaps its type GUID, CAF does not. */
 #undef AB_PTN_LIST
 #define AB_PTN_LIST PTN_SWAP_LIST, "boot", "system", "vendor", "modem", \
 	"system_ext", "product", "vendor_boot", "bluetooth", "fsg", "logo", \
-	"dsp", "uefisecapp", "cpucp", "prov", "spss", "vm-bootsys"
+	"dsp", "uefisecapp", "cpucp", "prov", "spss", "vm-bootsys", "shrm"
 
 #define BOOTDEV_DIR "/dev/block/bootdevice/by-name"
 #define BOOT_IMG_PTN_NAME "boot"
@@ -67,14 +68,27 @@
 
 #define SLOT_ACTIVE 1
 #define SLOT_INACTIVE 2
-#define UPDATE_SLOT(pentry, guid, slot_state) ({ \
-		memcpy(pentry, guid, TYPE_GUID_SIZE); \
-		if (slot_state == SLOT_ACTIVE)\
-			*(pentry + AB_FLAG_OFFSET) = AB_SLOT_ACTIVE_VAL; \
-		else if (slot_state == SLOT_INACTIVE) \
-		*(pentry + AB_FLAG_OFFSET)  = (*(pentry + AB_FLAG_OFFSET)& \
-			~AB_PARTITION_ATTR_SLOT_ACTIVE); \
-		})
+/* Motorola fastboot set_active (measured on xpeng after a working boot):
+ *   active firmware 0x7F (ACTIVE+SUCCESS+7 tries), active boot 0x77
+ *   inactive firmware 0x40 (SUCCESS only), inactive boot 0x2A
+ * CAF writes AB_SLOT_ACTIVE_VAL 0x3F (no SUCCESS) and only clears bit 2
+ * on inactive, which ABL treats as an unverified slot and then bootloops. */
+#define XPENG_AB_ACTIVE_FW     0x7F
+#define XPENG_AB_ACTIVE_BOOT   0x77
+#define XPENG_AB_INACTIVE_FW   0x40
+#define XPENG_AB_INACTIVE_BOOT 0x2A
+
+static void xpeng_update_slot_pentry(uint8_t *pentry, const void *guid,
+		int slot_state, bool is_boot)
+{
+	memcpy(pentry, guid, TYPE_GUID_SIZE);
+	if (slot_state == SLOT_ACTIVE)
+		*(pentry + AB_FLAG_OFFSET) = is_boot ?
+			XPENG_AB_ACTIVE_BOOT : XPENG_AB_ACTIVE_FW;
+	else if (slot_state == SLOT_INACTIVE)
+		*(pentry + AB_FLAG_OFFSET) = is_boot ?
+			XPENG_AB_INACTIVE_BOOT : XPENG_AB_INACTIVE_FW;
+}
 
 using namespace std;
 const char *slot_suffix_arr[] = {
@@ -388,26 +402,27 @@ static int boot_ctl_set_active_slot_for_partitions(vector<string> part_list,
 					prefix.c_str());
 			goto error;
 		}
+		bool is_boot = (prefix == BOOT_IMG_PTN_NAME);
 		if (!strncmp(slot_suffix_arr[slot], AB_SLOT_A_SUFFIX,
 					strlen(AB_SLOT_A_SUFFIX))){
-			//Mark A as active in primary table
-			UPDATE_SLOT(pentryA, active_guid, SLOT_ACTIVE);
-			//Mark A as active in backup table
-			UPDATE_SLOT(pentryA_bak, active_guid, SLOT_ACTIVE);
-			//Mark B as inactive in primary table
-			UPDATE_SLOT(pentryB, inactive_guid, SLOT_INACTIVE);
-			//Mark B as inactive in backup table
-			UPDATE_SLOT(pentryB_bak, inactive_guid, SLOT_INACTIVE);
+			xpeng_update_slot_pentry(pentryA, active_guid,
+					SLOT_ACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryA_bak, active_guid,
+					SLOT_ACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryB, inactive_guid,
+					SLOT_INACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryB_bak, inactive_guid,
+					SLOT_INACTIVE, is_boot);
 		} else if (!strncmp(slot_suffix_arr[slot], AB_SLOT_B_SUFFIX,
 					strlen(AB_SLOT_B_SUFFIX))){
-			//Mark B as active in primary table
-			UPDATE_SLOT(pentryB, active_guid, SLOT_ACTIVE);
-			//Mark B as active in backup table
-			UPDATE_SLOT(pentryB_bak, active_guid, SLOT_ACTIVE);
-			//Mark A as inavtive in primary table
-			UPDATE_SLOT(pentryA, inactive_guid, SLOT_INACTIVE);
-			//Mark A as inactive in backup table
-			UPDATE_SLOT(pentryA_bak, inactive_guid, SLOT_INACTIVE);
+			xpeng_update_slot_pentry(pentryB, active_guid,
+					SLOT_ACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryB_bak, active_guid,
+					SLOT_ACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryA, inactive_guid,
+					SLOT_INACTIVE, is_boot);
+			xpeng_update_slot_pentry(pentryA_bak, inactive_guid,
+					SLOT_INACTIVE, is_boot);
 		} else {
 			//Something has gone terribly terribly wrong
 			ALOGE("%s: Unknown slot suffix!", __func__);
