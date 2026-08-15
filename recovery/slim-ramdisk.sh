@@ -155,6 +155,23 @@ if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   rm -rf "$ROOT/vendor/firmware"
   cp -a "$DT_ROOT/vendor/firmware" "$ROOT/vendor/"
 fi
+# Kernel request_firmware searches /lib/firmware after firmware_class.path.
+# Do NOT rely on ramdisk /vendor/firmware: mounting super vendor hides it, and
+# sideload/format can leave that inode EUCLEAN ("Structure needs cleaning").
+mkdir -p "$ROOT/lib/firmware" "$ROOT/system/etc/firmware"
+if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
+  cp -f "$DT_ROOT/vendor/firmware/"*.bin "$ROOT/lib/firmware/" 2>/dev/null || true
+  cp -f "$DT_ROOT/vendor/firmware/"*.bin "$ROOT/system/etc/firmware/" 2>/dev/null || true
+  # DT boot/resume name is tm_novatek_ts_fw.bin (panel-supplier=tm). MMI doreflash
+  # uses novatek_ts-NT36675-*-xpeng.bin. Same payload; both names must exist or
+  # first unblank loads the DT name, fails, and IRQs stay at 0.
+  for src in "$ROOT/lib/firmware/"novatek_ts-*.bin; do
+    [[ -f "$src" ]] || continue
+    cp -f "$src" "$ROOT/lib/firmware/tm_novatek_ts_fw.bin"
+    cp -f "$src" "$ROOT/system/etc/firmware/tm_novatek_ts_fw.bin"
+    break
+  done
+fi
 
 # QTI vibrator chain. After Format Data, super /vendor is unmapped and only
 # ramdisk /vendor remains. vibratorOL.impl dlopens libqtivibratoreffectoffload
