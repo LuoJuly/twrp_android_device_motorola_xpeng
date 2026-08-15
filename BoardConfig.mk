@@ -149,10 +149,10 @@ RECOVERY_LIBRARY_SOURCE_FILES += \
 
 # TWRP Configuration
 # portrait_hdpi (1080x1920) scaled to 1080x2460 — best stock theme for this panel
-# Shown as: 3.7.1_12-<TW_DEVICE_VERSION>
+# Shown as: 3.7.1_12-0_stock_by LuoJuly
 _empty :=
 _space := $(_empty) $(_empty)
-TW_DEVICE_VERSION := 0_by$(_space)LuoJuly
+TW_DEVICE_VERSION := 0_stock_by$(_space)LuoJuly
 TW_THEME := portrait_hdpi
 TW_EXTRA_LANGUAGES := true
 TW_SCREEN_BLANK_ON_BOOT := true
