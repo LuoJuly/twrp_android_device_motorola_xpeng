@@ -163,7 +163,9 @@ TW_USE_TOOLBOX := true
 TW_EXCLUDE_ENCRYPTED_BACKUPS := false
 # lahaina RTC ticks from 1970; real time = rtc + /data/vendor/time/ats_*
 TARGET_RECOVERY_QCOM_RTC_FIX := true
-# POSIX UTC+8 (Beijing, no DST). Wired through recovery Android.mk → data.cpp.
+# POSIX UTC+8 (Beijing, no DST). Applied via patches/0014 (recovery Android.mk + data.cpp).
+# /misc fstab fallback for BootControl/FBE: patches/0015.
+# keystore2 delayed start: recovery/root/system/etc/init/keystore2.rc + vintf/manifest.xml.
 TW_DEFAULT_TIMEZONE := CST-8
 # MTP via configfs ffs.mtp (see init.recovery.usb.rc). UMS remains mass_storage.0.
 # Do NOT set TW_EXCLUDE_MTP.

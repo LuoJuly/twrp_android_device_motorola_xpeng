@@ -1,0 +1,46 @@
+diff --git a/Android.mk b/Android.mk
+--- a/Android.mk
++++ b/Android.mk
+@@ -411,6 +411,10 @@ ifeq ($(TARGET_RECOVERY_QCOM_RTC_FIX),)
+ else ifeq ($(TARGET_RECOVERY_QCOM_RTC_FIX),true)
+     LOCAL_CFLAGS += -DQCOM_RTC_FIX
+ endif
++# Optional device-tree override for default POSIX TZ (e.g. CST-8 for UTC+8)
++ifneq ($(TW_DEFAULT_TIMEZONE),)
++    LOCAL_CFLAGS += -DTW_DEFAULT_TIMEZONE_STR=\"$(TW_DEFAULT_TIMEZONE)\"
++endif
+ ifneq ($(TW_NO_LEGACY_PROPS),)
+ 	LOCAL_CFLAGS += -DTW_NO_LEGACY_PROPS
+ endif
+diff --git a/data.cpp b/data.cpp
+--- a/data.cpp
++++ b/data.cpp
+@@ -753,7 +753,18 @@ void DataManager::SetDefaultValues()
+ 	mPersist.SetValue(TW_DISABLE_FREE_SPACE_VAR, "0");
+ 	mPersist.SetValue(TW_FORCE_DIGEST_CHECK_VAR, "0");
+ 	mPersist.SetValue(TW_USE_COMPRESSION_VAR, "0");
++#ifdef TW_DEFAULT_TIMEZONE_STR
++	mPersist.SetValue(TW_TIME_ZONE_VAR, TW_DEFAULT_TIMEZONE_STR);
++	/* Match portrait theme list item for UTC+8 Beijing (no DST). */
++	mPersist.SetValue(TW_TIME_ZONE_GUISEL, "TAIST-8;TAIDT");
++	mPersist.SetValue(TW_TIME_ZONE_GUIOFFSET, "0");
++	mPersist.SetValue(TW_TIME_ZONE_GUIDST, "0");
++#else
+ 	mPersist.SetValue(TW_TIME_ZONE_VAR, "CST6CDT,M3.2.0,M11.1.0");
++	mPersist.SetValue(TW_TIME_ZONE_GUISEL, "CST6;CDT,M3.2.0,M11.1.0");
++	mPersist.SetValue(TW_TIME_ZONE_GUIOFFSET, "0");
++	mPersist.SetValue(TW_TIME_ZONE_GUIDST, "1");
++#endif
+ 	mPersist.SetValue(TW_GUI_SORT_ORDER, "1");
+ 	mPersist.SetValue(TW_RM_RF_VAR, "0");
+ 	mPersist.SetValue(TW_SKIP_DIGEST_CHECK_VAR, "0");
+@@ -762,9 +773,6 @@ void DataManager::SetDefaultValues()
+ 	mPersist.SetValue(TW_SDEXT_SIZE, "0");
+ 	mPersist.SetValue(TW_SWAP_SIZE, "0");
+ 	mPersist.SetValue(TW_SDPART_FILE_SYSTEM, "ext3");
+-	mPersist.SetValue(TW_TIME_ZONE_GUISEL, "CST6;CDT,M3.2.0,M11.1.0");
+-	mPersist.SetValue(TW_TIME_ZONE_GUIOFFSET, "0");
+-	mPersist.SetValue(TW_TIME_ZONE_GUIDST, "1");
+ 	mPersist.SetValue(TW_AUTO_REFLASHTWRP_VAR, "0");
+ #ifdef TW_NO_FLASH_CURRENT_TWRP
+ 	mConst.SetValue("tw_no_flash_current_twrp", "1");
