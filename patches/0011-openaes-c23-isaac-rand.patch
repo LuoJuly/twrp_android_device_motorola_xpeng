@@ -1,0 +1,71 @@
+diff --git a/openaes/src/isaac/rand.c b/openaes/src/isaac/rand.c
+--- a/openaes/src/isaac/rand.c
++++ b/openaes/src/isaac/rand.c
+@@ -25,8 +25,7 @@
+   *(r++) = b = ind(mm,y>>RANDSIZL) + x; \
+ }
+ 
+-void     isaac(ctx)
+-randctx *ctx;
++void isaac(randctx *ctx)
+ {
+    register ub4 a,b,x,y,*m,*mm,*m2,*r,*mend;
+    mm=ctx->randmem; r=ctx->randrsl;
+@@ -62,9 +61,7 @@
+ }
+ 
+ /* if (flag==TRUE), then use the contents of randrsl[] to initialize mm[]. */
+-void randinit(ctx, flag)
+-randctx *ctx;
+-word     flag;
++void randinit(randctx *ctx, word flag)
+ {
+    word i;
+    ub4 a,b,c,d,e,f,g,h;
+diff --git a/openaes/src/isaac/rand.h b/openaes/src/isaac/rand.h
+--- a/openaes/src/isaac/rand.h
++++ b/openaes/src/isaac/rand.h
+@@ -36,17 +36,18 @@
+  If (flag==TRUE), then use the contents of randrsl[0..RANDSIZ-1] as the seed.
+ ------------------------------------------------------------------------------
+ */
+-void randinit(/*_ randctx *r, word flag _*/);
++void randinit(randctx *r, word flag);
+ 
+-void isaac(/*_ randctx *r _*/);
++void isaac(randctx *r);
+ 
+ 
+ /*
+ ------------------------------------------------------------------------------
+- Call rand(/o_ randctx *r _o/) to retrieve a single 32-bit random value
++ Call isaac_rand(r) to retrieve a single 32-bit random value.
++ (Not named rand(): C23/clang treats libc rand as taking no arguments.)
+ ------------------------------------------------------------------------------
+ */
+-#define rand(r) \
++#define isaac_rand(r) \
+    (!(r)->randcnt-- ? \
+      (isaac(r), (r)->randcnt=RANDSIZ-1, (r)->randrsl[(r)->randcnt]) : \
+      (r)->randrsl[(r)->randcnt])
+diff --git a/openaes/src/oaes_lib.c b/openaes/src/oaes_lib.c
+--- a/openaes/src/oaes_lib.c
++++ b/openaes/src/oaes_lib.c
+@@ -631,7 +631,7 @@
+ 	
+ 	for( _i = 0; _i < key_size; _i++ )
+ #ifdef OAES_HAVE_ISAAC
+-		_key->data[_i] = (uint8_t) rand( _ctx->rctx );
++		_key->data[_i] = (uint8_t) isaac_rand( _ctx->rctx );
+ #else
+ 		_key->data[_i] = (uint8_t) rand();
+ #endif // OAES_HAVE_ISAAC
+@@ -958,7 +958,7 @@
+ 			{
+ 				for( _i = 0; _i < OAES_BLOCK_SIZE; _i++ )
+ #ifdef OAES_HAVE_ISAAC
+-					_ctx->iv[_i] = (uint8_t) rand( _ctx->rctx );
++					_ctx->iv[_i] = (uint8_t) isaac_rand( _ctx->rctx );
+ #else
+ 					_ctx->iv[_i] = (uint8_t) rand();
+ #endif // OAES_HAVE_ISAAC

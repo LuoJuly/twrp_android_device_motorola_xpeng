@@ -111,13 +111,13 @@ Device-tree flags (already in this repo):
 | `PRODUCT_CHECK_PREBUILT_MAX_PAGE_SIZE := false` (`device.mk`) | Prebuilt recovery bins may be 4K-aligned; A16 checks reject them otherwise |
 | `PRODUCT_ENABLE_UFFD_GC := false` + `OVERRIDE_ENABLE_UFFD_GC := false` | Moto kernel 5.4 has no UFFD GC; leave ART UFFD GC off |
 
-TWRP **source** edits used for a successful build (re-apply after a clean `repo sync` of `bootable/recovery`):
+TWRP **source** patches (applied by `scripts/apply-patches.sh` / Action `apply-device-patches.sh` after a clean `repo sync` of `bootable/recovery`):
 
 | Location | What / why |
 |----------|------------|
-| `bootable/recovery/openaes/src/isaac/rand.{c,h}` + `oaes_lib.c` | ANSI prototypes + rename `rand()` → `isaac_rand` for C23/clang on Android 16 |
-| `bootable/recovery/prebuilt/Android.mk` | `task_profiles.json` copy fallback when `TARGET_OUT_ETC` copy is missing |
-| `patches/0001`–`0002` (via `scripts/apply-patches.sh`) | Keep fstab Mount display names; quiet animation end-frame |
+| `patches/0001`–`0002` | Keep fstab Mount display names; quiet animation end-frame |
 | `patches/0003`–`0004` | AIDL haptics (`checkService`, no cached binder) / default MTP off |
 | `patches/0005` | Stop vibrator before Virtual A/B unmap; remount `/vendor` after Format Data |
 | `patches/0009` | Delete FBE `userdata` dm-default-key mapper before `make_f2fs` |
+| `patches/0010` | Re-register super volumes after Format Data |
+| `patches/0011` | OpenAES C23: ANSI prototypes + `rand()` → `isaac_rand` (A16 clang) |

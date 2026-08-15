@@ -1,7 +1,8 @@
 diff --git a/data.cpp b/data.cpp
+index feb58ff..2067649 100644
 --- a/data.cpp
 +++ b/data.cpp
-@@ -934,7 +934,8 @@
+@@ -934,7 +934,8 @@ void DataManager::SetDefaultValues()
  #endif
  #ifdef TW_HAS_MTP
  	mConst.SetValue("tw_has_mtp", "1");
@@ -11,7 +12,7 @@ diff --git a/data.cpp b/data.cpp
  	mPersist.SetValue("tw_mtp_debug", "0");
  #else
  	LOGINFO("TW_EXCLUDE_MTP := true\n");
-@@ -1137,6 +1138,11 @@
+@@ -1145,6 +1146,10 @@ void DataManager::ReadSettingsFile(void)
  
  	LOGINFO("Attempt to load settings from settings file...\n");
  	LoadValues(settings_file);
@@ -23,9 +24,10 @@ diff --git a/data.cpp b/data.cpp
  #endif // ifdef TW_OEM_BUILD
  	PartitionManager.Mount_All_Storage();
 diff --git a/twrp.cpp b/twrp.cpp
+index 9494b28..ca2d248 100644
 --- a/twrp.cpp
 +++ b/twrp.cpp
-@@ -251,23 +251,24 @@
+@@ -251,23 +251,21 @@ static void process_recovery_mode(twrpAdbBuFifo* adb_bu_fifo, bool skip_decrypti
  #ifdef TW_HAS_MTP
  	char mtp_crash_check[PROPERTY_VALUE_MAX];
  	property_get("mtp.crash_check", mtp_crash_check, "0");
@@ -51,13 +53,13 @@ diff --git a/twrp.cpp b/twrp.cpp
 -		PartitionManager.Disable_MTP();
 +	} else if (DataManager::GetIntValue("tw_mtp_enabled")) {
 +		LOGINFO("Clearing persisted MTP enabled flag (enable from Mount menu).\n");
- 	}
++	}
 +	DataManager::SetValue("tw_mtp_enabled", 0);
 +	{
 +		char usb_cfg[PROPERTY_VALUE_MAX];
 +		property_get("sys.usb.config", usb_cfg, "");
 +		if (strstr(usb_cfg, "mtp") != nullptr)
 +			PartitionManager.Disable_MTP();
-+	}
+ 	}
  #endif
  
