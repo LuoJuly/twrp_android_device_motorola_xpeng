@@ -1,0 +1,66 @@
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -1830,6 +1830,14 @@
+ }
+ 
+ int TWPartitionManager::Format_Data(void) {
++#ifdef TW_HAS_MTP
++	// MTP holds /data and keeps USB in mtp,adb; drop it before unmount/mkfs.
++	Disable_MTP();
++#endif
++	// Stop vibrator (and leftover HIDL boot-hal) before Virtual A/B unmap.
++	TWFunc::check_and_run_script("/system/bin/preformatdata.sh", "Pre Format Data Script");
++
+ 	TWPartition* dat = Find_Partition_By_Path("/data");
+ 	TWPartition* metadata = Find_Partition_By_Path("/metadata");
+ 	int ret = false;
+@@ -1845,19 +1853,26 @@
+ #endif
+ 			if (metadata != NULL)
+ 				metadata->Mount(true);
+-			if (!Check_Pending_Merges())
+-				return false;
++			// vendor_b DestroyLogicalPartition can still fail if vibrator
++			// holds /vendor; continue Wipe_Encryption instead of aborting.
++			if (!Check_Pending_Merges()) {
++				LOGERR("Check_Pending_Merges/unmap failed; continuing Format Data anyway\n");
++				gui_msg("Warning: dynamic partition unmap incomplete; continuing format...");
++			}
+ 		}
+		ret = dat->Wipe_Encryption();
+		if (ret)
+			TWFunc::check_and_run_script("/system/bin/formatdata.sh", "Format Data Script");
+-		return ret;
+	} else {
+		gui_msg(Msg(msg::kError, "unable_to_locate=Unable to locate {1}.")("/data"));
+-		return false;
++		ret = false;
+	}
+-	return false;
++	// Check_Pending_Merges unmapped super (including vendor). Remap and remount
++	// /vendor so QTI vibrator HAL can resolve vendor libs again.
++	if (android::base::GetBoolProperty("ro.virtual_ab.enabled", false)) {
++		Setup_Super_Devices();
++		std::string vendor_dev = "/dev/block/mapper/vendor" + Get_Active_Slot_Suffix();
++		for (int i = 0; i < 50 && access(vendor_dev.c_str(), F_OK) != 0; ++i)
++			usleep(100000);
++		if (access(vendor_dev.c_str(), F_OK) == 0) {
++			if (TWFunc::Exec_Cmd("mount -t erofs -o ro " + vendor_dev + " /vendor", false) != 0 &&
++			    TWFunc::Exec_Cmd("mount -t ext4 -o ro " + vendor_dev + " /vendor", false) != 0) {
++				LOGERR("Failed to remount %s on /vendor after Format Data\n",
++				       vendor_dev.c_str());
++			} else {
++				LOGINFO("Remounted %s on /vendor after Format Data\n", vendor_dev.c_str());
++			}
++		} else {
++			LOGERR("vendor mapper %s missing after Setup_Super_Devices\n",
++			       vendor_dev.c_str());
++		}
++	}
++	// preformatdata.sh stops vibrator so vendor_b can unmap; bring it back.
++	TWFunc::Exec_Cmd("start vendor.qti.vibrator", false);
++	return ret;
+ }
+ 
+ int TWPartitionManager::Wipe_Media_From_Data(void) {

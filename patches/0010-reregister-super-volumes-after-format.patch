@@ -1,0 +1,149 @@
+diff --git a/partitions.hpp b/partitions.hpp
+--- a/partitions.hpp
++++ b/partitions.hpp
+@@ -415,6 +415,7 @@
+ 	int Set_Crypto_Type(const char* crypto_type);                             // Sets encryption type for FDE (block) and FBE (file) devices (ro.crypto.type)
+ 	void Unlock_Block_Partitions();                                           // Unlock all block devices after update_engine runs
+ 	bool Unmap_Super_Devices();                                               // Unmap super devices in TWRP
++	bool Reregister_Super_Volumes();                                          // Recreate TWPartition objects after Unmap_Super_Devices
+ 	bool Check_Pending_Merges();                                              // Check and run pending merges on data for VAB devices
+     bool Disable_AVB2(bool Display_Info);                                     // Disable AVB 2.0
+ 
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -1865,24 +1865,23 @@
+ 		gui_msg(Msg(msg::kError, "unable_to_locate=Unable to locate {1}.")("/data"));
+ 		ret = false;
+ 	}
+-	// Check_Pending_Merges unmapped super (including vendor). Remap and remount
+-	// /vendor so QTI vibrator HAL can resolve vendor libs again.
++	// Check_Pending_Merges unmapped super and deleted TWPartition* entries.
++	// Recreate mapper devices, re-register objects, then remount /vendor so
++	// QTI vibrator HAL can resolve vendor libs again.
+ 	if (android::base::GetBoolProperty("ro.virtual_ab.enabled", false)) {
+-		Setup_Super_Devices();
++		if (!Reregister_Super_Volumes())
++			LOGERR("Failed to re-register super volumes after Format Data\n");
++		TWPartition* ven = Find_Partition_By_Path("/vendor");
+ 		std::string vendor_dev = "/dev/block/mapper/vendor" + Get_Active_Slot_Suffix();
+-		for (int i = 0; i < 50 && access(vendor_dev.c_str(), F_OK) != 0; ++i)
+-			usleep(100000);
+-		if (access(vendor_dev.c_str(), F_OK) == 0) {
+-			if (TWFunc::Exec_Cmd("mount -t erofs -o ro " + vendor_dev + " /vendor", false) != 0 &&
+-			    TWFunc::Exec_Cmd("mount -t ext4 -o ro " + vendor_dev + " /vendor", false) != 0) {
+-				LOGERR("Failed to remount %s on /vendor after Format Data\n",
+-				       vendor_dev.c_str());
+-			} else {
+-				LOGINFO("Remounted %s on /vendor after Format Data\n", vendor_dev.c_str());
+-			}
++		if (ven && ven->Mount(false)) {
++			LOGINFO("Remounted /vendor after Format Data\n");
++		} else if (access(vendor_dev.c_str(), F_OK) == 0 &&
++			   (TWFunc::Exec_Cmd("mount -t erofs -o ro " + vendor_dev + " /vendor", false) == 0 ||
++			    TWFunc::Exec_Cmd("mount -t ext4 -o ro " + vendor_dev + " /vendor", false) == 0)) {
++			LOGINFO("Remounted %s on /vendor after Format Data (fallback)\n",
++			       vendor_dev.c_str());
+ 		} else {
+-			LOGERR("vendor mapper %s missing after Setup_Super_Devices\n",
+-			       vendor_dev.c_str());
++			LOGERR("Failed to remount /vendor after Format Data\n");
+ 		}
+ 	}
+ 	// preformatdata.sh stops vibrator so vendor_b can unmap; bring it back.
+@@ -3922,6 +3921,95 @@
+ 	return true;
+ }
+ 
++bool TWPartitionManager::Reregister_Super_Volumes() {
++	if (!Get_Super_Status())
++		return false;
++
++	Setup_Super_Devices();
++
++	std::string fstab_filename = "/etc/twrp.fstab";
++	if (!TWFunc::Path_Exists(fstab_filename))
++		fstab_filename = "/etc/recovery.fstab";
++	if (!TWFunc::Path_Exists(fstab_filename)) {
++		LOGERR("Reregister_Super_Volumes: no fstab found\n");
++		return false;
++	}
++
++	FILE *fstabFile = fopen(fstab_filename.c_str(), "rt");
++	if (!fstabFile) {
++		LOGERR("Reregister_Super_Volumes: unable to open '%s'\n", fstab_filename.c_str());
++		return false;
++	}
++
++	LOGINFO("Re-registering super volumes from %s\n", fstab_filename.c_str());
++	char fstab_line[MAX_FSTAB_LINE_LENGTH];
++	int added = 0;
++
++	while (fgets(fstab_line, sizeof(fstab_line), fstabFile) != NULL) {
++		if (fstab_line[0] == '#' || strstr(fstab_line, "swap"))
++			continue;
++
++		size_t line_size = strlen(fstab_line);
++		if (line_size == 0)
++			continue;
++		if (fstab_line[line_size - 1] != '\n')
++			fstab_line[line_size] = '\n';
++
++		TWPartition* partition = new TWPartition();
++		if (!partition->Process_Fstab_Line(fstab_line, false, NULL) || !partition->Is_Super) {
++			delete partition;
++			memset(fstab_line, 0, sizeof(fstab_line));
++			continue;
++		}
++
++		if (Find_Partition_By_Path(partition->Get_Mount_Point()) != NULL) {
++			LOGINFO("Super volume %s already registered\n", partition->Get_Mount_Point().c_str());
++			delete partition;
++			memset(fstab_line, 0, sizeof(fstab_line));
++			continue;
++		}
++
++		std::string bare = Get_Bare_Partition_Name(partition->Get_Mount_Point());
++		std::string mapper = "/dev/block/mapper/" + bare;
++		if (DataManager::GetStrValue("tw_has_boot_slots") == "1")
++			mapper += Get_Active_Slot_Suffix();
++		bool present = false;
++		for (int i = 0; i < 50 && !present; ++i) {
++			if (access(mapper.c_str(), F_OK) == 0)
++				present = true;
++			else
++				usleep(100000);
++		}
++		if (!present) {
++			LOGERR("Skip re-register %s: mapper %s missing\n",
++			       partition->Get_Mount_Point().c_str(), mapper.c_str());
++			delete partition;
++			memset(fstab_line, 0, sizeof(fstab_line));
++			continue;
++		}
++
++		if (!Prepare_Super_Volume(partition)) {
++			LOGERR("Prepare_Super_Volume failed for %s\n", partition->Get_Mount_Point().c_str());
++			delete partition;
++			memset(fstab_line, 0, sizeof(fstab_line));
++			continue;
++		}
++
++		Add_Partition(partition);
++		Output_Partition(partition);
++		added++;
++		memset(fstab_line, 0, sizeof(fstab_line));
++	}
++	fclose(fstabFile);
++
++	if (added > 0) {
++		Translate_Partition_Display_Names();
++		Update_System_Details();
++	}
++	LOGINFO("Re-registered %d super volume(s)\n", added);
++	return added > 0;
++}
++
+ 
+ bool TWPartitionManager::Check_Pending_Merges() {
+ 	auto sm = android::snapshot::SnapshotManager::NewForFirstStageMount();

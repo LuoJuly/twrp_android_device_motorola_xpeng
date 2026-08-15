@@ -1,0 +1,85 @@
+diff --git a/partitions.hpp b/partitions.hpp
+--- a/partitions.hpp
++++ b/partitions.hpp
+@@ -409,6 +409,7 @@
+ 	int Set_Crypto_Type(const char* crypto_type);                             // Sets encryption type for FDE (block) and FBE (file) devices (ro.crypto.type)
+ 	void Unlock_Block_Partitions();                                           // Unlock all block devices after update_engine runs
+ 	bool Unmap_Super_Devices();                                               // Unmap super devices in TWRP
++	void Unmap_Leftover_Mapper_Devices();                                     // Destroy leftover other-slot mapper devices
+ 	bool Reregister_Super_Volumes();                                          // Recreate TWPartition objects after Unmap_Super_Devices
+ 	bool Check_Pending_Merges();                                              // Check and run pending merges on data for VAB devices
+ 
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -3666,7 +3666,8 @@
+ 
+ void TWPartitionManager::Setup_Super_Devices() {
+ 	std::string superPart = Get_Super_Partition();
+-	android::fs_mgr::CreateLogicalPartitions(superPart);
++	if (!android::fs_mgr::CreateLogicalPartitions(superPart))
++		LOGERR("CreateLogicalPartitions failed for %s\n", superPart.c_str());
+ }
+ 
+ void TWPartitionManager::Setup_Super_Partition() {
+@@ -3806,13 +3807,60 @@
+ 			++iter;
+ 		}
+ 	}
++	Unmap_Leftover_Mapper_Devices();
+ 	return true;
+ }
+ 
++// First-stage init maps every LP with extents, including the inactive slot
++// (e.g. system_b). Unmap_Super_Devices only destroys active-slot volumes TWRP
++// registered, so leftovers remain. CreateLogicalPartitions then hits EEXIST
++// on the leftover and aborts before vendor_a / system_ext_a are created.
++void TWPartitionManager::Unmap_Leftover_Mapper_Devices() {
++	std::string superPart = Get_Super_Partition();
++	auto metadata = android::fs_mgr::ReadCurrentMetadata(superPart);
++	if (metadata) {
++		for (const auto& partition : metadata->partitions) {
++			std::string name = android::fs_mgr::GetPartitionName(partition);
++			std::string mapper = "/dev/block/mapper/" + name;
++			if (access(mapper.c_str(), F_OK) != 0)
++				continue;
++			LOGINFO("removing leftover mapper: %s\n", name.c_str());
++			if (!DestroyLogicalPartition(name))
++				LOGERR("Failed to unmap leftover mapper %s\n", name.c_str());
++			std::string cow = name + "-cow";
++			if (access(("/dev/block/mapper/" + cow).c_str(), F_OK) == 0) {
++				LOGINFO("removing leftover cow mapper: %s\n", cow.c_str());
++				DestroyLogicalPartition(cow);
++			}
++		}
++		return;
++	}
++
++	LOGERR("Unable to read super metadata; scanning /dev/block/mapper\n");
++	DIR* d = opendir("/dev/block/mapper");
++	if (!d)
++		return;
++	std::vector<std::string> names;
++	struct dirent* de;
++	while ((de = readdir(d)) != nullptr) {
++		if (de->d_name[0] == '.')
++			continue;
++		if (strcmp(de->d_name, "by-uuid") == 0 || strcmp(de->d_name, "userdata") == 0)
++			continue;
++		names.emplace_back(de->d_name);
++	}
++	closedir(d);
++	for (const auto& name : names) {
++		LOGINFO("removing leftover mapper: %s\n", name.c_str());
++		if (!DestroyLogicalPartition(name))
++			LOGERR("Failed to unmap leftover mapper %s\n", name.c_str());
++	}
++}
+ 
+ bool TWPartitionManager::Reregister_Super_Volumes() {
+ 	if (!Get_Super_Status())
+ 		return false;
+ 
++	Unmap_Leftover_Mapper_Devices();
+ 	Setup_Super_Devices();
+ 

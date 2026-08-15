@@ -1,0 +1,92 @@
+diff --git a/minuitwrp/include/minuitwrp/minui.h b/minuitwrp/include/minuitwrp/minui.h
+--- a/minuitwrp/include/minuitwrp/minui.h
++++ b/minuitwrp/include/minuitwrp/minui.h
+@@ -99,5 +99,7 @@
+ int res_scale_surface(gr_surface source, gr_surface* destination, float scale_w, float scale_h);
+ 
+ int vibrate(int timeout_ms);
++// Drop a cached AIDL vibrator binder (e.g. after Format Data restarts the HAL).
++void vibrate_reset_service(void);
+ 
+ #endif
+diff --git a/minuitwrp/events.cpp b/minuitwrp/events.cpp
+--- a/minuitwrp/events.cpp
++++ b/minuitwrp/events.cpp
+@@ -37,6 +37,7 @@
+ 
+ #ifdef USE_QTI_AIDL_HAPTICS
+ #include <aidl/android/hardware/vibrator/IVibrator.h>
++#include <android/binder_ibinder.h>
+ #include <android/binder_manager.h>
+ using ::aidl::android::hardware::vibrator::IVibrator;
+ #ifdef USE_QTI_AIDL_HAPTICS_FQNAME
+@@ -44,6 +45,7 @@
+ #else
+ static const std::string kVibratorInstance = std::string(IVibrator::descriptor) + "/default";
+ #endif
++static std::shared_ptr<IVibrator> g_vib_svc;
+ #ifdef USE_QTI_AIDL_HAPTICS_FIX_OFF
+ static std::atomic_int vib_on_count = 0;
+ #endif
+@@ -145,6 +147,13 @@
+ 	return -1;
+ }
+ 
++void vibrate_reset_service(void)
++{
++#ifdef USE_QTI_AIDL_HAPTICS
++	g_vib_svc = nullptr;
++#endif
++}
++
+ #ifndef TW_NO_HAPTICS
+ #ifndef TW_HAPTICS_TSPDRV
+ int vibrate(int timeout_ms)
+@@ -161,13 +170,20 @@
+ #elif defined(USE_QTI_AIDL_HAPTICS)
+     // checkService is non-blocking. getService() waits for the HAL and freezes
+     // the UI thread on every button press when the vibrator service is down.
+-    static std::shared_ptr<IVibrator> vib_svc;
+-    if (vib_svc == nullptr) {
++    // Drop a dead binder so Format Data (which kill -9's the HAL) can vibrate again.
++    if (g_vib_svc != nullptr) {
++        ndk::SpAIBinder sp = g_vib_svc->asBinder();
++        if (sp.get() == nullptr || !AIBinder_isAlive(sp.get())) {
++            LOGI("vibrator HAL binder is dead; rebinding\n");
++            g_vib_svc = nullptr;
++        }
++    }
++    if (g_vib_svc == nullptr) {
+         AIBinder* binder = AServiceManager_checkService(kVibratorInstance.c_str());
+         if (binder != nullptr)
+-            vib_svc = IVibrator::fromBinder(ndk::SpAIBinder(binder));
++            g_vib_svc = IVibrator::fromBinder(ndk::SpAIBinder(binder));
+     }
+-    std::shared_ptr<IVibrator> vib = vib_svc;
++    std::shared_ptr<IVibrator> vib = g_vib_svc;
+     if (vib != nullptr) {
+ #ifdef USE_QTI_AIDL_HAPTICS_FIX_OFF
+         std::thread([vib, timeout_ms] {
+diff --git a/partitionmanager.cpp b/partitionmanager.cpp
+--- a/partitionmanager.cpp
++++ b/partitionmanager.cpp
+@@ -65,6 +65,7 @@
+ #include "data.hpp"
+ #include "startupArgs.hpp"
+ #include "twrp-functions.hpp"
++#include "minuitwrp/minui.h"
+ #include "fixContexts.hpp"
+ #include "exclude.hpp"
+ #include "set_metadata.h"
+@@ -1819,7 +1820,11 @@
+ 		}
+ 	}
+ 
++	TWFunc::Exec_Cmd("stop vendor.qti.vibrator", false);
+ 	TWFunc::Exec_Cmd("start vendor.qti.vibrator", false);
++	// preformatdata.sh kill -9's the HAL; drop TWRP's cached AIDL binder so
++	// the next button press binds the restarted service.
++	vibrate_reset_service();
+ 	return ret;
+ }
+ 

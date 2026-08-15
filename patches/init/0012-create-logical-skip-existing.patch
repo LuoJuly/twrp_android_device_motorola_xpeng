@@ -1,0 +1,20 @@
+diff --git a/fs_mgr/fs_mgr_dm_linear.cpp b/fs_mgr/fs_mgr_dm_linear.cpp
+--- a/fs_mgr/fs_mgr_dm_linear.cpp
++++ b/fs_mgr/fs_mgr_dm_linear.cpp
+@@ -168,9 +168,15 @@
+ 
+         params.partition = &partition;
+ 
++        std::string name = GetPartitionName(partition);
++        if (access(("/dev/block/mapper/" + name).c_str(), F_OK) == 0) {
++            LINFO << "Logical partition already mapped, skipping: " << name;
++            continue;
++        }
++
+         std::string ignore_path;
+         if (!CreateLogicalPartition(params, &ignore_path)) {
+-            LERROR << "Could not create logical partition: " << GetPartitionName(partition);
++            LERROR << "Could not create logical partition: " << name;
+             return false;
+         }
+     }
