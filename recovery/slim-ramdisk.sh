@@ -80,61 +80,46 @@ if [[ -f "$UE" && -f "$WRAP" ]]; then
   echo "xpeng slim-ramdisk: installed update_engine_sideload SPL wrapper"
 fi
 
-# BootControl for update_engine: ensure DT overlays win over bootable/recovery defaults.
-mkdir -p "$ROOT/system/etc/init" "$ROOT/system/etc/vintf/manifest"
+# BootControl for update_engine: AIDL recovery HAL (no /vendor/lib64/hw overlay).
+mkdir -p "$ROOT/system/etc/init" "$ROOT/system/etc/vintf/manifest" "$ROOT/system/bin/hw"
 if [[ -f "$DT_ROOT/system/etc/recovery.fstab.default" ]]; then
   cp -f "$DT_ROOT/system/etc/recovery.fstab.default" "$ROOT/system/etc/recovery.fstab.default"
 fi
-if [[ -f "$DT_ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml" ]]; then
-  cp -f "$DT_ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml" \
-    "$ROOT/system/etc/vintf/manifest/android.hardware.boot@1.2.xml"
+if [[ -f "$DT_ROOT/system/etc/vintf/manifest/boot-service.qti.xml" ]]; then
+  cp -f "$DT_ROOT/system/etc/vintf/manifest/boot-service.qti.xml" \
+    "$ROOT/system/etc/vintf/manifest/boot-service.qti.xml"
 fi
-# bootable/recovery installs a oneshot boot-hal rc later in the build; force
-# non-oneshot so the HAL stays up for zip install after decrypt.
-if [[ -f "$DT_ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; then
-  cp -f "$DT_ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" \
-    "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc"
-elif [[ -f "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc" ]]; then
-  sed -i '/^[[:space:]]*oneshot[[:space:]]*$/d' \
-    "$ROOT/system/etc/init/android.hardware.boot@1.2-service.rc"
+if [[ -f "$DT_ROOT/system/etc/init/android.hardware.boot-service.qti.recovery.rc" ]]; then
+  cp -f "$DT_ROOT/system/etc/init/android.hardware.boot-service.qti.recovery.rc" \
+    "$ROOT/system/etc/init/android.hardware.boot-service.qti.recovery.rc"
 fi
-
-# QTI bootctrl writes GPT type GUIDs + UFS boot LUN. AOSP impl only writes
-# /misc, which Motorola ABL ignores. HIDL passthrough loads
-# android.hardware.boot@1.0-impl-1.2.so — install the QTI .so under that name.
-QTI_SO="android.hardware.boot@1.0-impl-1.2-qti.so"
-AOSP_SO="android.hardware.boot@1.0-impl-1.2.so"
-qti_src=""
-for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
-  if [[ -f "$dir/$QTI_SO" ]]; then
-    qti_src="$dir/$QTI_SO"
-    break
-  fi
-done
-# Idempotent: after a prior slim, only AOSP_SO remains (already QTI contents).
-# Use grep -a (not strings|grep -q): with pipefail, SIGPIPE from early grep exit
-# makes a successful match look like failure.
-if [[ -z "$qti_src" ]]; then
-  for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
-    if [[ -f "$dir/$AOSP_SO" ]] && grep -aq 'gpt_utils_set_xbl_boot_partition' "$dir/$AOSP_SO"; then
-      qti_src="$dir/$AOSP_SO"
-      break
-    fi
-  done
+# TWRP still copies HIDL boot-hal-1-2; drop it so nothing mmaps vendor HALs.
+rm -f \
+  "$ROOT"/system/etc/init/android.hardware.boot@1.0-service.rc \
+  "$ROOT"/system/etc/init/android.hardware.boot@1.1-service.rc \
+  "$ROOT"/system/etc/init/android.hardware.boot@1.2-service.rc \
+  "$ROOT"/system/etc/vintf/manifest/android.hardware.boot@1.0.xml \
+  "$ROOT"/system/etc/vintf/manifest/android.hardware.boot@1.1.xml \
+  "$ROOT"/system/etc/vintf/manifest/android.hardware.boot@1.2.xml \
+  "$ROOT"/system/bin/android.hardware.boot@1.0-service \
+  "$ROOT"/system/bin/android.hardware.boot@1.1-service \
+  "$ROOT"/system/bin/android.hardware.boot@1.2-service \
+  "$ROOT"/vendor/bin/hw/android.hardware.boot@1.0-service \
+  "$ROOT"/vendor/bin/hw/android.hardware.boot@1.1-service \
+  "$ROOT"/vendor/bin/hw/android.hardware.boot@1.2-service
+rm -f \
+  "$ROOT"/vendor/lib64/hw/android.hardware.boot@1.0-impl-1.2.so \
+  "$ROOT"/vendor/lib64/hw/android.hardware.boot@1.0-impl-1.2-qti.so \
+  "$ROOT"/system/lib64/hw/android.hardware.boot@1.0-impl-1.2.so \
+  "$ROOT"/system/lib64/hw/android.hardware.boot@1.0-impl-1.2-qti.so
+if [[ -f "$DT_ROOT/system/bin/preformatdata.sh" ]]; then
+  cp -f "$DT_ROOT/system/bin/preformatdata.sh" "$ROOT/system/bin/preformatdata.sh"
+  chmod 0755 "$ROOT/system/bin/preformatdata.sh"
 fi
-if [[ -n "$qti_src" ]]; then
-  for dir in "$ROOT/vendor/lib64/hw" "$ROOT/system/lib64/hw"; do
-    mkdir -p "$dir"
-    if [[ "$qti_src" != "$dir/$AOSP_SO" ]]; then
-      cp -f "$qti_src" "$dir/$AOSP_SO"
-    fi
-  done
-  # Drop duplicate *-qti.so copies after installing under the AOSP load name.
-  rm -f "$ROOT"/vendor/lib64/hw/"$QTI_SO" \
-    "$ROOT"/system/lib64/hw/"$QTI_SO"
-  echo "xpeng slim-ramdisk: installed QTI bootctrl as $AOSP_SO (removed $QTI_SO dup)"
+if [[ -x "$ROOT/system/bin/hw/android.hardware.boot-service.qti.recovery" ]]; then
+  echo "xpeng slim-ramdisk: AIDL boot-service.qti.recovery present"
 else
-  echo "xpeng slim-ramdisk: WARNING missing $QTI_SO (slot switch will not work)" >&2
+  echo "xpeng slim-ramdisk: WARNING missing android.hardware.boot-service.qti.recovery" >&2
 fi
 
 # Keep libperfetto_c.so — A16 servicemanager links it; without it Decrypt_Data
@@ -169,6 +154,29 @@ fi
 if [[ -d "$DT_ROOT/vendor/firmware" ]]; then
   rm -rf "$ROOT/vendor/firmware"
   cp -a "$DT_ROOT/vendor/firmware" "$ROOT/vendor/"
+fi
+
+# QTI vibrator chain. After Format Data, super /vendor is unmapped and only
+# ramdisk /vendor remains. vibratorOL.impl dlopens libqtivibratoreffectoffload
+# which is not produced by this tree — copy the DT prebuilts explicitly.
+mkdir -p "$ROOT/vendor/lib64"
+for lib in \
+  libqtivibratoreffect.so \
+  libqtivibratoreffectoffload.so \
+  libexpat.so \
+  vendor.qti.hardware.vibrator.impl.so \
+  vendor.qti.hardware.vibratorOL.impl.so \
+  vendor.qti.hardware.vibratorSel.impl.so
+do
+  if [[ -f "$DT_ROOT/vendor/lib64/$lib" ]]; then
+    cp -f "$DT_ROOT/vendor/lib64/$lib" "$ROOT/vendor/lib64/"
+    chmod 0644 "$ROOT/vendor/lib64/$lib"
+  fi
+done
+if [[ -f "$DT_ROOT/system/lib64/libexpat.so" ]]; then
+  mkdir -p "$ROOT/system/lib64"
+  cp -f "$DT_ROOT/system/lib64/libexpat.so" "$ROOT/system/lib64/"
+  chmod 0644 "$ROOT/system/lib64/libexpat.so"
 fi
 
 # Strip ELF to cut unpacked size (lz4 ratio already high on unstripped).

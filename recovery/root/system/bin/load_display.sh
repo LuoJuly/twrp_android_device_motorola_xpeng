@@ -5,6 +5,9 @@
 # msm_drm.ko stays on vendor_boot (/lib/modules, ~3.9MiB); other kos ship in
 # boot ramdisk under /vendor/lib/modules.
 #
+# Do not wait/loop here: this script is exec'd from on early-boot and blocks
+# init (no recovery GUI, no enable_adb) until it returns.
+#
 
 load() {
 	for MOD in /vendor/lib/modules /lib/modules /sbin/modules; do

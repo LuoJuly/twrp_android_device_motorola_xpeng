@@ -1,0 +1,6 @@
+<manifest version="1.0" type="framework">
+    <hal format="aidl">
+        <name>android.hardware.boot</name>
+        <fqname>IBootControl/default</fqname>
+    </hal>
+</manifest>

@@ -57,35 +57,10 @@ stop keymaster-4-0 2>/dev/null || true
 killall android.hardware.keymaster@4.0-service-qti 2>/dev/null || true
 start keymaster-4-1-qti 2>/dev/null || true
 start gatekeeper-1-0-qti 2>/dev/null || true
-# HIDL bootctrl — needed for metadata decrypt checkpoint AND update_engine_sideload.
-# Vendor-built passthrough service only dlopens /vendor/lib64/hw/*-impl*.so (VNDK);
-# recovery ships the impl under /system/lib64/hw. Stage it into vendor (bind if full).
-# Also needs recovery.fstab.default (Android fs_mgr /misc) + HIDL VINTF fragment.
-stage_bootctrl_hal() {
-  local src="/system/lib64/hw/android.hardware.boot@1.0-impl-1.2.so"
-  local dst="/vendor/lib64/hw/android.hardware.boot@1.0-impl-1.2.so"
-  if [ -f "$src" ]; then
-    if [ ! -s "$dst" ] || [ "$(wc -c < "$dst" 2>/dev/null || echo 0)" -lt 1000 ]; then
-      if ! mountpoint -q /vendor/lib64/hw 2>/dev/null; then
-        mkdir -p /mnt/vendor_hw_boot
-        mount -t tmpfs -o mode=0755 tmpfs /mnt/vendor_hw_boot
-        cp -a /vendor/lib64/hw/. /mnt/vendor_hw_boot/ 2>/dev/null || true
-        mount --bind /mnt/vendor_hw_boot /vendor/lib64/hw
-      fi
-      cp -f "$src" /vendor/lib64/hw/android.hardware.boot@1.0-impl-1.2.so 2>/dev/null || true
-    fi
-  fi
-  # hwservicemanager sets disabled=true if android.hidl.manager is missing from VINTF
-  if [ "$(getprop hwservicemanager.disabled)" = "true" ]; then
-    setprop hwservicemanager.disabled 0
-    stop hwservicemanager 2>/dev/null || true
-    start hwservicemanager 2>/dev/null || true
-    sleep 0.5
-  fi
-  start boot-hal-1-2 2>/dev/null || true
-}
-stage_bootctrl_hal
-# Leave boot-hal-1-2 running for the recovery session (update_engine needs it later).
+# AIDL bootctrl (Lineage-style). Binary lives in /system/bin/hw and only
+# links system libs — do not overlay /vendor/lib64/hw (that blocked Format Data).
+# Start here because on fs runs before class_start hal.
+start vendor.boot-qti 2>/dev/null || true
 
 if ! pidof android.hardware.keymaster@4.1-service-qti >/dev/null 2>&1; then
   /system/bin/android.hardware.keymaster@4.1-service-qti &

@@ -1,0 +1,14 @@
+diff --git a/aidl/client/BootControlClient.cpp b/aidl/client/BootControlClient.cpp
+--- a/aidl/client/BootControlClient.cpp
++++ b/aidl/client/BootControlClient.cpp
+@@ -436,7 +436,10 @@
+     android::sp<V1_0::IBootControl> v1_0_module;
+     android::sp<V1_1::IBootControl> v1_1_module;
+     android::sp<V1_2::IBootControl> v1_2_module;
+-    v1_0_module = V1_0::IBootControl::getService();
++    // getService() blocks forever when HIDL IBootControl is not running (this
++    // device is AIDL-only). That hangs TWRP before gui_init → black screen.
++    v1_0_module = V1_0::IBootControl::tryGetService();
+     if (v1_0_module == nullptr) {
+         LOG(ERROR) << "Error getting bootctrl v1.0 module.";
+         return nullptr;

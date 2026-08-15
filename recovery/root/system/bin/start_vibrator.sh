@@ -18,14 +18,27 @@ if [ ! -x "$BIN" ]; then
 	exit 1
 fi
 
-# Keep HAL alive for the recovery session (oneshot wrapper would leave
-# init.svc=stopped after a single crash and kill haptics).
+# After Format Data, super /vendor is unmapped. If the mapper is back, remount
+# so vibratorOL/Sel can resolve the rest of the vendor lib chain.
+slot="$(getprop ro.boot.slot_suffix)"
+if [ -n "$slot" ] && [ -e "/dev/block/mapper/vendor${slot}" ]; then
+	if ! grep -q ' /vendor ' /proc/mounts 2>/dev/null; then
+		if mount -t erofs -o ro "/dev/block/mapper/vendor${slot}" /vendor \
+			|| mount -t ext4 -o ro "/dev/block/mapper/vendor${slot}" /vendor; then
+			echo "start_vibrator: mounted vendor${slot}" > /dev/kmsg
+		else
+			echo "start_vibrator: mount vendor${slot} failed" > /dev/kmsg
+		fi
+	fi
+fi
+
+# Keep HAL alive for the recovery session. First start often races
+# servicemanager (exit=1); later Format Data may SIGKILL this wrapper.
 tries=0
-while [ "$tries" -lt 5 ]; do
+while true; do
 	"$BIN"
 	rc=$?
 	tries=$((tries + 1))
 	echo "start_vibrator: exit=$rc try=$tries" > /dev/kmsg
 	sleep 1
 done
-exit 0

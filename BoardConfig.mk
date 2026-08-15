@@ -160,6 +160,12 @@ RECOVERY_LIBRARY_SOURCE_FILES += \
     $(TARGET_OUT_SHARED_LIBRARIES)/libion.so \
     $(TARGET_OUT_SHARED_LIBRARIES)/libsysutils.so
 
+# QTI AIDL bootctrl (recovery variant) + AIDL ndk client used by update_engine.
+TARGET_RECOVERY_DEVICE_MODULES += \
+    android.hardware.boot-service.qti.recovery
+RECOVERY_LIBRARY_SOURCE_FILES += \
+    $(TARGET_OUT_SHARED_LIBRARIES)/android.hardware.boot-V1-ndk.so
+
 # QTI AIDL vibrator
 TW_SUPPORT_INPUT_AIDL_HAPTICS := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
@@ -171,7 +177,11 @@ RECOVERY_BINARY_SOURCE_FILES += \
     $(TARGET_OUT_VENDOR_EXECUTABLES)/hw/vendor.qti.hardware.vibrator.service
 RECOVERY_LIBRARY_SOURCE_FILES += \
     $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/vendor.qti.hardware.vibrator.impl.so \
-    $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libqtivibratoreffect.so
+    $(TARGET_OUT_VENDOR_SHARED_LIBRARIES)/libqtivibratoreffect.so \
+    $(TARGET_OUT_SHARED_LIBRARIES)/libexpat.so
+# vibrator.impl → vibratorOL.impl needs libqtivibratoreffectoffload.so.
+# twrp-16.0 does not build that module; ship the prebuilt via recovery/root
+# (slim-ramdisk copies it). Without it, HAL dies after Format Data unmaps /vendor.
 
 # TWRP Configuration
 _empty :=
@@ -193,11 +203,10 @@ TW_CUSTOM_BATTERY_PATH := /tmp/twrp_battery
 TW_CUSTOM_CPU_TEMP_PATH := /tmp/twrp_cpu_temp
 BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
 
-# Load display/touch modules before gui_init (msm_drm must be early).
-# Also loaded from init.recovery.qcom.rc (early-init) and runatboot.sh.
-# vermagic must match prebuilt/kernel (Lineage 5.4.302-moto-g057847a8c116).
-TW_LOAD_VENDOR_MODULES := "msm_drm.ko mmi_annotate.ko mmi_info.ko mmi_relay.ko sensors_class.ko touchscreen_mmi.ko nova_0flash_mmi.ko"
-TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
+# Display/touch kos: first-stage vendor_boot + load_display.sh.
+# Do NOT set TW_LOAD_VENDOR_MODULES — stock TWRP loader mounts /vendor and
+# re-insmods msm_drm before gui_init, which blacks the panel on this device.
+# TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
 
 TARGET_SYSTEM_PROP += $(DEVICE_PATH)/system.prop
 

@@ -1,0 +1,11 @@
+<!-- AIDL IBootControl. TWRP recovery's base VINTF is type="framework";
+     libvintf ignores type="device" fragments here. Vendor AIDL used device
+     type on Lineage (full OS); recovery must match the framework skeleton or
+     AServiceManager_addService CHECK-aborts and init crash-loops the HAL. -->
+<manifest version="1.0" type="framework">
+    <hal format="aidl">
+        <name>android.hardware.boot</name>
+        <fqname>IBootControl/default</fqname>
+    </hal>
+</manifest>
+

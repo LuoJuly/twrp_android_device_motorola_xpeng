@@ -20,46 +20,87 @@ cc_library {
     defaults: ["libgptutils_defaults"],
 }
 
-// Motorola UFS A/B keeps *_a and *_b on separate LUNs. Build the 1.2 HIDL
-// impl from device-tree sources (diskA/diskB) instead of CAF defaults, which
-// assume both slots share one GPT.
-// Unique stem so we do not collide with AOSP android.hardware.boot@1.2-impl.
-// slim-ramdisk.sh copies this to android.hardware.boot@1.0-impl-1.2.so for
-// android.hardware.boot@1.2-service passthrough.
-cc_library_shared {
-    name: "android.hardware.boot@1.2-impl-qti",
-    stem: "android.hardware.boot@1.0-impl-1.2-qti",
-    defaults: ["hidl_defaults"],
-    relative_install_path: "hw",
+// Dual-LUN QTI bootctrl core (GPT type GUIDs + UFS boot LUN). Shared by the
+// leftover HIDL impl and the recovery AIDL service.
+cc_defaults {
+    name: "libboot_control_qti.xpeng_defaults",
     vendor: true,
     recovery_available: true,
-    srcs: [
-        "bootctrl/libboot_control_qti.cpp",
-        "bootctrl/BootControl.cpp",
-    ],
     local_include_dirs: ["bootctrl"],
+    header_libs: ["libgptutils_headers"],
     shared_libs: [
         "liblog",
-        "libhidlbase",
-        "libhardware",
-        "libutils",
         "libbase",
         "libcutils",
         "libz",
-        "android.hardware.boot@1.0",
         "android.hardware.boot@1.1",
-        "android.hardware.boot@1.2",
     ],
     static_libs: [
         "libgptutils.xpeng",
         "libboot_control",
-        "libbootloader_message_vendor",
         "libfstab",
     ],
-    header_libs: ["libgptutils_headers"],
     cflags: [
         "-Wall",
         "-Werror",
         "-include device/motorola/xpeng/bootctrl/xpeng_gpt_compat.h",
+    ],
+}
+
+cc_library_static {
+    name: "libboot_control_qti.xpeng",
+    defaults: ["libboot_control_qti.xpeng_defaults"],
+    srcs: ["bootctrl/libboot_control_qti.cpp"],
+    static_libs: ["libbootloader_message_vendor"],
+}
+
+// HIDL 1.2 impl kept in-tree but not packaged for recovery (AIDL replaced it).
+cc_library_shared {
+    name: "android.hardware.boot@1.2-impl-qti",
+    stem: "android.hardware.boot@1.0-impl-1.2-qti",
+    defaults: ["hidl_defaults", "libboot_control_qti.xpeng_defaults"],
+    relative_install_path: "hw",
+    srcs: ["bootctrl/BootControl.cpp"],
+    shared_libs: [
+        "libhidlbase",
+        "libhardware",
+        "libutils",
+        "android.hardware.boot@1.0",
+        "android.hardware.boot@1.2",
+    ],
+    static_libs: [
+        "libboot_control_qti.xpeng",
+        "libbootloader_message_vendor",
+    ],
+}
+
+// Lineage-style recovery AIDL IBootControl. Statically links QTI dual-LUN
+// gpt-utils so the binary only needs system libs — no /vendor/lib64/hw overlay.
+cc_binary {
+    name: "android.hardware.boot-service.qti.recovery",
+    defaults: ["libboot_control_defaults"],
+    relative_install_path: "hw",
+    recovery: true,
+    srcs: [
+        "bootctrl/aidl/main.cpp",
+        "bootctrl/aidl/BootControl.cpp",
+    ],
+    local_include_dirs: ["bootctrl", "bootctrl/aidl"],
+    init_rc: ["bootctrl/aidl/android.hardware.boot-service.qti.recovery.rc"],
+    vintf_fragments: ["bootctrl/aidl/boot-service.qti.xml"],
+    shared_libs: [
+        "libbase",
+        "libbinder_ndk",
+        "libcutils",
+        "libz",
+        "android.hardware.boot-V1-ndk",
+        "android.hardware.boot@1.1",
+    ],
+    static_libs: [
+        "libboot_control_qti.xpeng",
+        "libgptutils.xpeng",
+        "libboot_control",
+        "libbootloader_message",
+        "libfstab",
     ],
 }

@@ -1,0 +1,14 @@
+# Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+#
+# Start from ensure_decrypt (on fs, after bootdevice). Do not start from
+# servicemanager.ready — bootcontrol_init() needs GPT nodes and CHECK/abort
+# plus init restart froze the UI (black screen, no ADB).
+
+service vendor.boot-qti /system/bin/hw/android.hardware.boot-service.qti.recovery
+    class hal
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+    interface aidl android.hardware.boot.IBootControl/default

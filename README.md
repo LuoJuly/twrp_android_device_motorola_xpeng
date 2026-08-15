@@ -8,14 +8,14 @@ Ported from the A12 (`twrp-12.1`) device tree and adapted for community Android 
 - Build tree: `TWRP-Test/platform_manifest_twrp_aosp` → `twrp-16.0`
 - Lunch: `twrp_xpeng-bp2a-eng`
 - Decrypt: lahaina + **Keymaster 4.1** (QCOM FBE — not KeyMint/Weaver)
-- Kernel / modules / keystack blobs: official LineageOS 23.2 nightly
+- Kernel / modules: ReSukiSU `lineage-23.2-ReSukiSU` (`5.4.302-moto-g37469fe9fcdd`); keystack blobs from LineageOS 23.2 nightly
 
 ## Sources
 
 | Component | Source |
 |-----------|--------|
-| `prebuilt/kernel` | LOS `boot.img` (`5.4.302-moto-g057847a8c116`) |
-| Recovery modules | LOS `vendor_boot` → `lib/modules` (vermagic matched) |
+| `prebuilt/kernel` | [LuoJuly/android_kernel_motorola_sm7325](https://github.com/LuoJuly/android_kernel_motorola_sm7325) `lineage-23.2-ReSukiSU` (`5.4.302-moto-g37469fe9fcdd`) |
+| Recovery modules | Same kernel build (16 ramdisk kos; `msm_drm.ko` stays on vendor_boot) |
 | qseecomd / keymaster 4.1 / gatekeeper | LOS `vendor` |
 | System libs (libion, etc.) | LOS `system` |
 | Partition / crypto flags | [LineageOS xpeng lineage-23.2](https://github.com/LineageOS/android_device_motorola_xpeng/tree/lineage-23.2) |
@@ -75,8 +75,8 @@ device/motorola/xpeng/scripts/enter-twrp.sh restore-vendor_boot
 3. **Crypto**: `wrappedkey_v0` + metadata FBE; keep patch dates at `2099-12-31` (`prepdecrypt.setpatch=false`) so decrypt matches Keymaster
 4. **No** SM8850 / KeyMint / Weaver trees — this device stays on Keymaster 4.1
 5. **Touch / thermal**: `runatboot` + `init_thermal` + LOS-matched modules
-6. **A/B zip install**: keep `update_engine_sideload` and a working HIDL `boot-hal-1-2` (impl under `/vendor/lib64/hw`, Android-format `/misc` fstab, VINTF declaration). A thin wrapper temporarily sets `ro.build.version.security_patch` to the on-device system/vendor SPL (falls back to `1970-01-01`) during sideload so the forged `2099-12-31` decrypt date does not trigger an SPL-downgrade powerwash (`BCB --wipe_data`)
-7. **Slot switch**: use QTI dual-LUN bootctrl (`bootctrl/`, `android.hardware.boot@1.2-impl-qti`) — AOSP `/misc`-only impl is ignored by Motorola ABL. slim installs the QTI `.so` as `android.hardware.boot@1.0-impl-1.2.so` and drops the `*-qti.so` duplicate for ramdisk size
+6. **A/B zip install**: keep `update_engine_sideload` and Lineage-style AIDL `android.hardware.boot-service.qti.recovery` (system libs only, no `/vendor/lib64/hw` overlay). Android-format `/misc` fstab + AIDL VINTF `boot-service.qti.xml`. A thin wrapper temporarily sets `ro.build.version.security_patch` to the on-device system/vendor SPL (falls back to `1970-01-01`) during sideload so the forged `2099-12-31` decrypt date does not trigger an SPL-downgrade powerwash (`BCB --wipe_data`)
+7. **Slot switch**: same QTI dual-LUN bootctrl core (`bootctrl/libboot_control_qti.cpp`) statically linked into the AIDL recovery binary — AOSP `/misc`-only impl is ignored by Motorola ABL. HIDL `@1.2-service` is stripped from the ramdisk (it mmap'd vendor HALs and blocked Format Data unmap of `vendor_b`)
 
 ## Refresh blobs
 
@@ -118,4 +118,6 @@ TWRP **source** edits used for a successful build (re-apply after a clean `repo 
 | `bootable/recovery/openaes/src/isaac/rand.{c,h}` + `oaes_lib.c` | ANSI prototypes + rename `rand()` → `isaac_rand` for C23/clang on Android 16 |
 | `bootable/recovery/prebuilt/Android.mk` | `task_profiles.json` copy fallback when `TARGET_OUT_ETC` copy is missing |
 | `patches/0001`–`0002` (via `scripts/apply-patches.sh`) | Keep fstab Mount display names; quiet animation end-frame |
-| `patches/0003`–`0004` | AIDL haptics / default MTP off — optional; may need refresh |
+| `patches/0003`–`0004` | AIDL haptics (`checkService`, no cached binder) / default MTP off |
+| `patches/0005` | Stop vibrator before Virtual A/B unmap; remount `/vendor` after Format Data |
+| `patches/0009` | Delete FBE `userdata` dm-default-key mapper before `make_f2fs` |

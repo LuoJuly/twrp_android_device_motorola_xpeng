@@ -48,6 +48,8 @@ on property:ro.boot.usbcontroller=*
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+    # AIDL boot HAL after GPT nodes exist (not at servicemanager.ready).
+    start vendor.boot-qti
     # qseecomd runs as system — allow RPMB/ION (metadata FBE key unwrap)
     wait /dev/0:0:0:49476 1
     chmod 0660 /dev/0:0:0:49476 /dev/0:0:0:49456 /dev/0:0:0:49488 /dev/qseecom /dev/ion

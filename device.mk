@@ -27,12 +27,11 @@ AB_OTA_POSTINSTALL_CONFIG += \
     POSTINSTALL_OPTIONAL_system=true
 
 # Boot control HAL — QTI dual-LUN GPT (sdd=_a, sdf=_b) + UFS boot LUN.
-# AOSP impl only writes /misc, which Motorola ABL ignores → TWRP slot switch
-# appears to work but does not change the real active slot.
+# Recovery uses Lineage-style AIDL android.hardware.boot-service.qti.recovery
+# (system libs only). Do not ship HIDL @1.2-service: it dlopens
+# /vendor/lib64/hw and blocks Format Data unmap of vendor_b.
 PRODUCT_PACKAGES += \
-    android.hardware.boot@1.2-impl-qti \
-    android.hardware.boot@1.2-impl-qti.recovery \
-    android.hardware.boot@1.2-service
+    android.hardware.boot-service.qti.recovery
 
 # Keep update_engine_sideload (A/B zip). Omit update_verifier / fastbootd (ramdisk).
 PRODUCT_PACKAGES += \
@@ -45,7 +44,8 @@ PRODUCT_PACKAGES += \
 
 # QTI AIDL vibrator HAL (copied into recovery via BoardConfig RECOVERY_*_SOURCE_FILES)
 PRODUCT_PACKAGES += \
-    vendor.qti.hardware.vibrator.service
+    vendor.qti.hardware.vibrator.service \
+    libexpat
 
 # Prebuilt recovery bins (magiskboot etc.) may be 4K-aligned
 PRODUCT_CHECK_PREBUILT_MAX_PAGE_SIZE := false
